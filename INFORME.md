@@ -16,6 +16,7 @@ Hackatón DonWeb Day Rosario · 1/11/2026 · Franco Ledesma
 | Taller (qué armar y tarjetas) | https://petalos.hackaton.somosandromeda.store/taller |
 | Reparto (ruta con IA y mapa) | https://petalos.hackaton.somosandromeda.store/reparto |
 | Estado del sistema | https://petalos.hackaton.somosandromeda.store/api/salud |
+| **Qué hicimos + video demo** | https://petalos.hackaton.somosandromeda.store/hackaton |
 | Sitio Simple de DonWeb (vidriera) | https://petalos-de-emergencia.misitiosimple.online |
 | **WhatsApp de Flora** | +54 9 11 2396-7106 |
 
