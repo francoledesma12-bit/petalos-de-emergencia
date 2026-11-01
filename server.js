@@ -227,7 +227,7 @@ const servidor = http.createServer(async (req, res) => {
 
     // Aviso de GREEN-API (webhook).
     if (req.method === 'POST' && ruta === '/wa/aviso') {
-      if (TOKEN_AVISO && req.headers.authorization !== `Bearer ${TOKEN_AVISO}`) return json(res, 401, { error: 'no' });
+      if (TOKEN_AVISO && !String(req.headers.authorization || "").endsWith(TOKEN_AVISO)) return json(res, 401, { error: "no" });
       const m = leerAviso(await cuerpo(req));
       if (m) recibirWhatsApp(m);
       return json(res, 200, { ok: true });
