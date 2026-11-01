@@ -80,7 +80,8 @@ function entenderConReglas(texto, estado, ficha) {
     else if (/mas caro|mas grande|el mejor|tirar la casa/.test(t)) r.eleccion = estado.opciones.at(-1);
   }
   for (const p of ficha.productos) if (t.includes(normal(p.nombre).split(' ').slice(1).join(' '))) r.eleccion = p.id;
-  r.extras = ficha.extras.filter(e => t.includes(normal(e.nombre).split(' ').pop()) || t.includes(e.id)).map(e => e.id);
+  const ALIAS = { bombones: /bombon|chocolate/, peluche: /peluche|osito|oso/, globo: /globo/ };
+  r.extras = ficha.extras.filter(e => (ALIAS[e.id] || new RegExp(e.id)).test(t)).map(e => e.id);
 
   if (estado.producto && !estado.estilo && texto.length <= 80 && !/persona|humano|cancel/.test(t)) r.estilo = texto;
   if (estado.tarjetas && !estado.tarjeta) {
@@ -530,6 +531,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
       `Tarjeta: "${estado.tarjeta}"`,
       ...(estado.notas ? [`Nota: ${estado.notas}`] : []),
       ...(estado.wa_recibe ? [`Le enviamos la imagen por WhatsApp a ${estado.recibe}: +${estado.wa_recibe}`] : []),
+      ...(extras.length || ficha.situaciones[estado.situacion].tono === 'serio' ? [] : ['', `💡 ¿Le sumamos algo? ${ficha.extras.map(x => `${x.nombre} ${pesos(x.precio)}`).join(' · ')}. Escribime cuál y lo agrego.`]),
       '',
       '¿Lo confirmo?',
     ].join('\n'));

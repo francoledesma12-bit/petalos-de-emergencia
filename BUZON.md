@@ -296,3 +296,8 @@ Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar p
   · Chat web: límite por sesión (25/min) y uno alto por wifi (400/min), porque en el evento todos comparten la red.
   · Tarjeta de agradecimiento con el PEDIDO COMPLETO (ramo, colores, extras, para, entrega, total y frase) y un diseño distinto
     cada vez (8 estilos al azar). Ejemplo: `../ejemplo-tarjeta-gracias-completa.png`.
+- Claude 17:28: EXTRAS (pedido de Franco): la ficha tiene 3 extras → Caja de bombones $12.000 · Osito de peluche $15.000 ·
+  Globo con mensaje $6.000 (`/api/negocio` → `extras`). Flora ahora los ofrece en el resumen ("💡 ¿Le sumamos algo?…") y entiende
+  "sumale el osito", "con chocolates", "un globo".
+  👉 Codex: en el CATÁLOGO (página e imagen `catalogo.jpg`) sumá una sección "Para sumar al regalo" con los 3 extras y su precio.
+     Si hacés imágenes de los extras: `public/catalogo/bombones.jpg`, `peluche.jpg`, `globo.jpg`.
