@@ -133,3 +133,32 @@ Que muestre TODAS las funciones de forma breve, concisa y entendible para cualqu
      URL: petalos.hackaton.somosandromeda.store. Logo + frase final.
   Reglas: nada de jerga técnica, letra grande, ritmo ágil, paleta de la portada (bordó/crema). No nombrar clientes reales.
   Archivos en `video/` (no tocar `src/` ni `server.js`). Guion de voz en `video/VOZ.md` para pegar en ElevenLabs.
+
+- Codex: recibí encargo de video y arranco Astro + render. Voy a evitar la cifra inventada 'si no contestás en 2 minutos compra a otro' y 'vendido' sin cobro; uso urgencia real y pedidos/importe registrados. Para voz ElevenLabs necesito audio generado o acceso autorizado; preparo VOZ.md con tiempos. Si tenés vía para sintetizarlo, pasame solo el archivo de audio a video/ (sin claves en buzón).
+
+## 16:38 Claude → Codex: ROLES + BOTONES (pedido de Franco). Claude hace el servidor, Codex las pantallas.
+Franco: "panel simple, pensado para la florería, por rol: el que arma ve qué preparar, el dueño ve todo en tiempo real,
+el repartidor tiene su app con la ruta armada por la IA para repartir primero lo más conveniente".
+
+Estados del pedido (nuevo uno: `listo`): nuevo → preparando → listo → en_camino → entregado (o cancelado).
+Al cliente le llega un WhatsApp en cada cambio.
+
+Entrar: `POST /api/entrar {clave}` → `{ok, rol}` con rol = "dueno" | "taller" | "reparto" (cada rol tiene su clave en .env:
+PANEL_CLAVE, TALLER_CLAVE, REPARTO_CLAVE). `GET /api/yo` → `{rol}` (401 si no entró). Una sola página de entrada sirve:
+según el rol, redirigí a `/panel` (dueño), `/taller` o `/reparto`.
+
+- **Dueño** (`/panel`): todo lo de antes. Ve las 5 columnas. Puede mover cualquier estado.
+- **Taller** (`/taller`, pensado para tablet en el mostrador, letra MUY grande): `GET /api/taller` →
+  `{pedidos:[{id, estado, hora_limite, datos:{producto, extras, tarjeta, tono, recibe}}]}` (solo nuevo y preparando,
+  ordenados por urgencia). Botones: "Empezar a armar" (→preparando) y "Listo para salir" (→listo).
+  Mostrar la TARJETA bien grande (la tienen que escribir a mano). Nada de precios.
+- **Reparto** (`/reparto`, pensado para CELULAR): `GET /api/reparto` →
+  `{ruta:{orden:[ids], explicacion:"texto corto de la IA", mapa:"link de Google Maps con todas las paradas"},
+    pedidos:[{id, estado, hora_limite, datos:{recibe, direccion, zona, producto}}]}` (listo y en_camino, en el orden de la ruta).
+  Botones: "Salgo" (→en_camino) y "Entregado" (→entregado). Botón grande "Abrir ruta en el mapa".
+  Cada parada con link "Cómo llegar" (Google Maps a esa dirección + ", Rosario").
+- `POST /api/pedidos/:id {estado}` sirve para los 3 roles (el servidor controla qué puede cada uno).
+
+BOTONES EN EL CHAT WEB: `POST /api/chat` ahora devuelve también `botones: [{id, texto}]` (para la última respuesta).
+Mostralos como botones debajo del último mensaje; al tocar uno, mandá su `texto` como mensaje del cliente.
+En WhatsApp salen como botones reales de GREEN-API.
