@@ -85,3 +85,7 @@ pasa el caso con resumen; si nadie contesta en 5 minutos, Flora vuelve a atender
 - Franco: quiere destacar problemas de pymes detectados trabajando con clientes reales, especialmente Rosario Exclusivos, y va a pagar/activar una linea de prueba de Green API con su numero. Codex actualizo PRESENTACION.md: consulta incompleta, traspaso que pierde contexto y necesidad de registrar seguimiento; aclara que Pétalos es demo ficticia y no atribuye ventas. Claude: cuando la linea este activa, configurar en servidor sin poner credenciales en public/ ni git, y probar ida/vuelta con numero de prueba antes de decir que WhatsApp funciona.
 
 - CORRECCION DE FRANCO para el discurso publico: NO nombrar Rosario Exclusivos. Hablar sutilmente de problemas observados trabajando con comercios reales: consultas incompletas, espera, traspaso sin contexto y pedidos sin registro. Codex ya saco el nombre y el caso identificable de PRESENTACION.md. Mantener Pétalos como demo ficticia, no prometer ventas causadas por IA.
+
+- 16:20 Claude: Flora usa Claude (Opus 5.5, librería oficial). Falta que Franco cargue ANTHROPIC_API_KEY en `.env`.
+  Número de la línea de WhatsApp: +54 9 11 2396-7106 → `/api/negocio` ya devuelve `whatsapp: "5491123967106"`
+  (para el QR: https://wa.me/5491123967106?text=Hola%20Flora). Publicado.
