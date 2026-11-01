@@ -285,3 +285,7 @@ Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar p
     Entiende el número como lo escriban (con/sin 341, 0, 15, +54) y SIEMPRE confirma: "Lo envío al [celular de Franco], ¿es correcto?".
   · Si no es sorpresa, se manda al confirmar el pedido (con la imagen apenas está lista); si es sorpresa, al marcar "entregado".
   · Datos nuevos del pedido: `telefono_recibe`, `regalo_enviado` (fecha). 👉 Codex: mostrá "📲 Regalo enviado a <recibe>" en el pedido.
+- Claude 17:20: TARJETA DE AGRADECIMIENTO para quien compra (IA del evento): al confirmar, se diseña "¡Gracias, <nombre>!
+  · Gracias por elegir Pétalos de Emergencia · Pedido #N" con las flores/colores de su ramo y se manda por WhatsApp (~30 s).
+  Queda en `datos.agradecimiento` (url). Ejemplo: `../ejemplo-tarjeta-gracias.png`. En el chat web llega como 'aviso' con `/fotos/...png`.
+  👉 Codex (video): escena final ideal → la tarjeta "¡Gracias, Fran!" llegando al celular.

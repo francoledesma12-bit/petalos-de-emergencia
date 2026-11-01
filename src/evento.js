@@ -46,6 +46,36 @@ export async function dibujarRamo({ id, producto, detalle, extras = [], tarjeta,
   }
 }
 
+// Tarjeta de agradecimiento para quien compró, con su nombre y el número de pedido.
+export async function dibujarAgradecimiento({ id, nombre, estilo, tono, negocio }, carpeta) {
+  if (!CLAVE) return null;
+  const prompt = [
+    `Tarjeta de agradecimiento elegante y moderna de la florería "${negocio}", formato cuadrado, diseño editorial.`,
+    `Texto principal grande, en español y perfectamente legible: "¡Gracias${nombre ? ', ' + nombre : ''}!".`,
+    `Debajo, en letra más chica: "Gracias por elegir ${negocio}" y "Pedido #${id}".`,
+    `Decorada con una ilustración delicada de flores en ${estilo || 'tonos bordó y crema'}${tono === 'serio' ? ', estilo sobrio y respetuoso' : ''}.`,
+    'Fondo crema, detalles en bordó, mucho aire, sin otros textos, sin logos de marcas.',
+  ].join(' ');
+  try {
+    const r = await fetch(`${BASE}/images/generations`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${CLAVE}` },
+      body: JSON.stringify({ model: MODELO_IMAGEN, prompt, size: '1024x1024', quality: 'medium', n: 1 }),
+      signal: AbortSignal.timeout(120000),
+    });
+    const j = await r.json();
+    const b64 = j.data?.[0]?.b64_json;
+    if (!r.ok || !b64) { console.error('[evento] agradecimiento falló', r.status, j.error?.message); return null; }
+    await mkdir(carpeta, { recursive: true });
+    const archivo = `ramo-${id}-gracias${Date.now().toString(36)}.png`;
+    await writeFile(join(carpeta, archivo), Buffer.from(b64, 'base64'));
+    return archivo;
+  } catch (e) {
+    console.error('[evento] agradecimiento error:', e.message);
+    return null;
+  }
+}
+
 // Audio de WhatsApp → texto (español).
 export async function pasarATexto(url) {
   if (!CLAVE || !url) return null;

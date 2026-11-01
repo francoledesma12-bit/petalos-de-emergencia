@@ -11,7 +11,7 @@ import { atender, resumenParaPersona, textoPedidoCreado, textoCambioEstado } fro
 import { enviar, enviarConAcciones, escribiendo, imagen, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
 import { rutaDeReparto } from './src/reparto.js';
 import { ubicar } from './src/mapa.js';
-import { dibujarRamo, pasarATexto, eventoActivo } from './src/evento.js';
+import { dibujarRamo, dibujarAgradecimiento, pasarATexto, eventoActivo } from './src/evento.js';
 import { iaActiva } from './src/ia.js';
 
 const PUERTO = Number(process.env.PORT || 3000);
@@ -121,6 +121,7 @@ async function procesar(canal, chatId, nombre, texto) {
       c.estado.pedido_id = p.id;
       ubicar(p.datos.direccion, ficha.ciudad).then(punto => { if (punto) { datos.sumarDatos(p.id, punto); avisar('tablero'); } });
       dichas.push(textoPedidoCreado(ficha, p.id, p.total, p.datos.tono));
+      agradecer(c.id, p);
       if (p.datos.telefono_recibe && !esSorpresa(p)) {
         regaloAlDestinatario(p.id);
         setTimeout(() => regaloAlDestinatario(p.id, { aunSinImagen: true }), 120000); // si la imagen no llega, va igual
@@ -200,6 +201,23 @@ ${pie}`;
   const ok = p.datos.imagen && SITIO ? await imagen(chat, SITIO + p.datos.imagen, texto) : await enviar(chat, texto);
   if (!ok) datos.sumarDatos(p.id, { regalo_enviado: null });
   avisar('tablero');
+}
+
+// Tarjeta de agradecimiento para quien compró (IA del evento), unos segundos después de confirmar.
+function agradecer(charlaId, p) {
+  if (!eventoActivo()) return;
+  const c0 = datos.charlaPorId(charlaId);
+  const nombre = (p.datos.cliente || c0.nombre || '').split(' ')[0].replace(/[^\p{L}]/gu, '').slice(0, 20) || null;
+  dibujarAgradecimiento({ id: p.id, nombre: nombre === 'Visitante' ? null : nombre, estilo: p.datos.estilo, tono: p.datos.tono, negocio: ficha.nombre }, FOTOS)
+    .then(archivo => archivo && enCola(`${c0.canal}:${c0.chat_id}`, async () => {
+      const url = `/fotos/${archivo}`;
+      datos.sumarDatos(p.id, { agradecimiento: url });
+      if (c0.canal === 'whatsapp' && SITIO) await imagen(c0.chat_id, SITIO + url, `¡Gracias por elegirnos! 🌷 Tu pedido #${p.id} ya está en manos de nuestro equipo.`);
+      datos.anotar(c0.id, 'aviso', `🌷 ¡Gracias por elegirnos!
+${url}`);
+      avisar('mensaje', { charla_id: c0.id, quien: 'aviso', texto: url });
+    }))
+    .catch(e => console.error('[agradecimiento]', e.message));
 }
 
 const dibujando = new Set(); // charlas con una vista previa en curso
