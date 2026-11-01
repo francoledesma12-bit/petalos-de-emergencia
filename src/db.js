@@ -118,6 +118,10 @@ export function pedidosEn(negocio, estados) {
     ORDER BY COALESCE(hora_limite, creado_en)`).all(negocio, ...estados).map(p => ({ ...p, datos: JSON.parse(p.datos) }));
 }
 
+export function cambiarTotal(id, total) {
+  db.prepare('UPDATE pedidos SET total=?, cambiado_en=? WHERE id=?').run(total, Date.now(), id);
+}
+
 export function sumarDatos(id, extra) {
   const p = pedido(id);
   if (p) db.prepare('UPDATE pedidos SET datos=? WHERE id=?').run(JSON.stringify({ ...p.datos, ...extra }), id);

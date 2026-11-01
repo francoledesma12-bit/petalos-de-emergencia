@@ -326,6 +326,8 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     if (e.situacion && e.situacion !== estado.situacion) {
       Object.keys(estado).forEach(k => delete estado[k]);
     } else {
+      // Sumar extras a un pedido ya confirmado (el servidor controla si todavía se llega).
+      if (e.extras?.length) return { respuestas: [], agregar: e.extras, estado };
       if (/pagad|pague|pago|transferi|transferencia|comprobante|abone/.test(normal(texto))) {
         return { respuestas: [`¡Gracias! Registramos tu aviso de pago del pedido #${estado.pedido_id} 🙌 El equipo lo confirma en breve y te avisamos por acá cada novedad de la entrega.`], pago: true, estado };
       }

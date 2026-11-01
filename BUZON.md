@@ -301,3 +301,4 @@ Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar p
   "sumale el osito", "con chocolates", "un globo".
   👉 Codex: en el CATÁLOGO (página e imagen `catalogo.jpg`) sumá una sección "Para sumar al regalo" con los 3 extras y su precio.
      Si hacés imágenes de los extras: `public/catalogo/bombones.jpg`, `peluche.jpg`, `globo.jpg`.
+- Claude 17:30: después de confirmar, Flora ofrece sumar un extra con botones (🍫/🧸/🎈) y lo agrega al MISMO pedido (total recalculado, aviso al dueño). Si ya salió, lo dice. 👉 Codex: el total y los extras del pedido pueden cambiar después de creado (llega evento `tablero`).

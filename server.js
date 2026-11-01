@@ -8,7 +8,8 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as datos from './src/db.js';
 import { atender, resumenParaPersona, textoPedidoCreado, textoCambioEstado } from './src/cerebro.js';
-import { enviar, enviarConAcciones, escribiendo, imagen, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
+import { enviar, enviarConAcciones, escribiendo, imagen, audio as enviarAudio, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
+import { sintetizar, vozActiva } from './src/voz.js';
 import { rutaDeReparto } from './src/reparto.js';
 import { ubicar } from './src/mapa.js';
 import { dibujarRamo, dibujarAgradecimiento, pasarATexto, eventoActivo, filaDeImagenes } from './src/evento.js';
@@ -69,7 +70,7 @@ const quien = c => `${c.nombre || 'Cliente'}${c.canal === 'whatsapp' ? ' (+' + c
 const hora = ms => new Date(ms).toLocaleString('es-AR', { weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
 
 // Atiende un mensaje (ya agrupado) y devuelve lo que contestó Flora.
-async function procesar(canal, chatId, nombre, texto) {
+async function procesar(canal, chatId, nombre, texto, responderConAudio = false) {
   return enCola(`${canal}:${chatId}`, async () => {
     const c = datos.charla(NEGOCIO, canal, chatId, nombre);
     const historial = datos.historial(c.id);
@@ -143,7 +144,27 @@ async function procesar(canal, chatId, nombre, texto) {
       setImmediate(() => dibujarPrevia(c.id)); // después de guardar el estado
     }
     datos.guardarEstado(c);
-    const botones = r.pedido ? [] : (r.botones || []);
+    // Pedido confirmado: se ofrece sumar un extra con un toque.
+    const botonesExtras = ficha.extras.map(x => ({ id: x.id, texto: `${{ bombones: '🍫', peluche: '🧸', globo: '🎈' }[x.id] || '➕'} ${x.nombre.split(' ').slice(0, 3).join(' ')}`.slice(0, 25) }));
+    if (r.pedido && r.pedido.datos.tono !== 'serio' && !r.pedido.datos.extras.length) {
+      dichas.push('¿Querés sumarle algo al regalo? Tocá una opción y lo agrego a este mismo pedido. Si no, ¡ya está todo listo! 🌷');
+    }
+    if (r.agregar?.length && c.estado.pedido_id) {
+      const p = datos.pedido(c.estado.pedido_id);
+      const nuevos = r.agregar.map(id => ficha.extras.find(x => x.id === id)).filter(x => x && !p.datos.extras.includes(x.nombre));
+      if (!nuevos.length) dichas.push(`Eso ya está en tu pedido #${p.id} 🌷`);
+      else if (!['nuevo', 'preparando', 'listo'].includes(p.estado)) dichas.push(`Tu pedido #${p.id} ya salió, así que no llegamos a sumarlo 🙏 Si querés, armamos otro envío.`);
+      else {
+        const total = p.total + nuevos.reduce((s, x) => s + x.precio, 0);
+        datos.sumarDatos(p.id, { extras: [...p.datos.extras, ...nuevos.map(x => x.nombre)] });
+        datos.cambiarTotal(p.id, total);
+        const nombres = nuevos.map(x => ({ bombones: 'la caja de bombones', peluche: 'el osito de peluche', globo: 'el globo con mensaje' })[x.id] || x.nombre.toLowerCase()).join(' y ');
+        dichas.push(`¡Listo! Sumé ${nombres} a tu pedido #${p.id} ✅ Nuevo total: *$ ${total.toLocaleString('es-AR')}*.`);
+        avisarDueno(`➕ *Pedido #${p.id}* · ${quien(c)} sumó ${nombres}. Nuevo total: $ ${total.toLocaleString('es-AR')}.`, c);
+        avisar('tablero');
+      }
+    }
+    const botones = r.pedido ? (r.pedido.datos.tono !== 'serio' && !r.pedido.datos.extras.length ? botonesExtras : []) : (r.botones || []);
     // Solo las imágenes que ya existen en public/ (si falta alguna, la charla sigue igual).
     const imagenes = (r.imagenes || []).filter(im => existsSync(join(PUBLICO, im.archivo)))
       .map(im => ({ url: `/${im.archivo}`, texto: im.texto }));
@@ -151,7 +172,14 @@ async function procesar(canal, chatId, nombre, texto) {
       // GREEN-API manda de a un mensaje cada medio segundo para TODA la línea: con mucha gente a la vez,
       // conviene un solo mensaje por respuesta (las imágenes del catálogo van antes, si existen).
       if (SITIO) for (const im of imagenes) await imagen(chatId, SITIO + im.url, im.texto);
-      if (dichas.length) await decir(c, dichas.join('\n\n'), 'flora', botones);
+      if (dichas.length) {
+        const respuesta = dichas.join('\n\n');
+        await decir(c, respuesta, 'flora', botones);
+        if (responderConAudio && vozActiva() && SITIO) {
+          const archivo = await sintetizar(respuesta, FOTOS);
+          if (archivo) await enviarAudio(chatId, `${SITIO}/fotos/${archivo}`);
+        }
+      }
     } else {
       for (const [i, t] of dichas.entries()) await decir(c, t, 'flora', i === dichas.length - 1 ? botones : []);
     }
@@ -257,7 +285,7 @@ function recibirWhatsApp(m) {
   if (m.tipo === 'audio') {
     // Audio → texto con la API del evento, y sigue como si lo hubiera escrito.
     pasarATexto(m.url).then(t => t
-      ? recibirWhatsApp({ tipo: 'entrante', chatId: m.chatId, nombre: m.nombre, texto: t })
+      ? recibirWhatsApp({ tipo: 'entrante', chatId: m.chatId, nombre: m.nombre, texto: t, responderConAudio: true })
       : enviar(m.chatId, 'No pude escuchar bien el audio 🙈 ¿Me lo escribís?'));
     return;
   }
@@ -269,12 +297,13 @@ function recibirWhatsApp(m) {
   }
   const { chatId, nombre, texto } = m;
   if (PALABRA && !esperando.has(chatId) && !charlaExiste(chatId) && !normalTexto(texto).includes(PALABRA)) return;
-  const e = esperando.get(chatId) || { textos: [] };
+  const e = esperando.get(chatId) || { textos: [], responderConAudio: false };
   clearTimeout(e.reloj);
   e.textos.push(texto);
+  e.responderConAudio ||= Boolean(m.responderConAudio);
   e.reloj = setTimeout(() => {
     esperando.delete(chatId);
-    procesar('whatsapp', chatId, nombre, e.textos.join('\n')).catch(err => console.error('[procesar]', err));
+    procesar('whatsapp', chatId, nombre, e.textos.join('\n'), e.responderConAudio).catch(err => console.error('[procesar]', err));
   }, 1800);
   esperando.set(chatId, e);
 }

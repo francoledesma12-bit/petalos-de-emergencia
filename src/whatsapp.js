@@ -52,6 +52,12 @@ export function imagen(chatId, url, epigrafe) {
   return llamar('sendFileByUrl', { chatId, urlFile: url, fileName: url.split('/').pop(), caption: epigrafe });
 }
 
+// GREEN-API envía el MP3 como audio reproducible dentro de WhatsApp.
+export function audio(chatId, url) {
+  if (!waActivo()) return Promise.resolve(false);
+  return llamar('sendFileByUrl', { chatId, urlFile: url, fileName: url.split('/').pop(), caption: '' });
+}
+
 // "Escribiendo…" mientras Flora piensa.
 export function escribiendo(chatId, ms = 3000) {
   if (waActivo()) llamar('sendTyping', { chatId, typingTime: Math.min(20000, Math.max(1000, ms)) });
