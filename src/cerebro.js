@@ -51,6 +51,7 @@ function entenderConReglas(texto, estado, ficha) {
   for (const p of ficha.productos) if (t.includes(normal(p.nombre).split(' ').slice(1).join(' '))) r.eleccion = p.id;
   r.extras = ficha.extras.filter(e => t.includes(normal(e.nombre).split(' ').pop()) || t.includes(e.id)).map(e => e.id);
 
+  if (estado.producto && !estado.estilo && texto.length <= 80 && !/persona|humano|cancel/.test(t)) r.estilo = texto;
   if (estado.tarjetas && !estado.tarjeta) {
     const n = numeroElegido(t);
     if (n) r.eleccion_tarjeta = n;
@@ -92,7 +93,7 @@ function promptEntender(ficha, estado, historial, texto) {
     `{"pide_persona":bool,"reclamo":"true si se queja de un pedido (no llegó, llegó mal, demora)","situacion":str|null,"gravedad":1|2|3|null,"para":"quién recibe y relación, ej: 'Caro, mi novia'"|null,`,
     `"contexto":"en 1 línea qué pasó"|null,"eleccion":id de producto|null,"extras":[ids],"eleccion_tarjeta":1|2|3|null,`,
     `"sin_tarjeta":bool,"tarjeta_propia":"texto EXACTO si el cliente dicta o cambia lo que dice la tarjeta (aunque ya haya elegido una)"|null,"direccion":"calle y número"|null,`,
-    `"barrio":str|null,"hora_limite":"HH:MM 24h; si da un rango (entre las 12 y las 15) poné el final del rango"|null,"ventana":"el rango tal cual, ej: entre las 12 y las 15"|null,"notas":"indicaciones para la entrega o el armado que dio el cliente (es sorpresa, tocar timbre, piso, alergias, colores)"|null,"recibe":"nombre de quien recibe"|null,"nombre_cliente":str|null,`,
+    `"barrio":str|null,"hora_limite":"HH:MM 24h; si da un rango (entre las 12 y las 15) poné el final del rango"|null,"ventana":"el rango tal cual, ej: entre las 12 y las 15"|null,"estilo":"colores o flores que pide para el ramo, o 'sorprendeme' si deja que elijamos"|null,"notas":"indicaciones para la entrega o el armado que dio el cliente (es sorpresa, tocar timbre, piso, alergias, colores)"|null,"recibe":"nombre de quien recibe"|null,"nombre_cliente":str|null,`,
     `"confirma":bool,"cancela":bool,"catalogo":"true si pide ver el catálogo, fotos o todo lo que hay","pregunta":"si pregunta otra cosa (horario, pago, envío), cuál"|null,`,
     `"frase":"UNA frase corta y humana para arrancar la respuesta, en español rioplatense, con humor si es una macana y seria si es un duelo. Sin precios, sin números, sin prometer nada"}`,
   ].join('\n');
@@ -142,6 +143,17 @@ function tarjetasDeRespaldo(tono, para) {
     'Estas flores vienen a negociar mi regreso del sillón. 🌹',
     `${n ? n + ', ' : ''}me equivoqué y lo sé. Vos me importás más que tener razón.`,
   ];
+}
+
+// Colores del ramo: lo que pidió el cliente, o uno al azar si dijo "sorprendeme".
+const SORPRESAS = ['rojo intenso con toques de bordó', 'rosa pastel y blanco', 'naranjas y amarillos de atardecer',
+  'lilas y violetas', 'blanco y verde con eucalipto', 'fucsia y coral vibrantes'];
+function elegirEstilo(pedido) {
+  const t = normal(pedido);
+  if (/sorpren|azar|aleatori|random|da igual|lo que sea|elegi vos|cualquiera/.test(t)) return SORPRESAS[Math.floor(Math.random() * SORPRESAS.length)];
+  if (/^[^a-z]*rojos y pasion/.test(t)) return 'rojo intenso con toques de bordó';
+  if (/^[^a-z]*rosas y pasteles/.test(t)) return 'rosa pastel y blanco';
+  return pedido.replace(/^[^\p{L}]+/u, '').slice(0, 80);
 }
 
 async function escribirTarjetas(ficha, estado) {
@@ -266,6 +278,13 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
   if (e.eleccion && (estado.opciones || estado.situacion)) estado.producto = e.eleccion;
   if (e.extras?.length) estado.extras = [...new Set([...(estado.extras || []), ...e.extras])];
   let tarjetaCambiada = false;
+  const teniaTarjeta = Boolean(estado.tarjeta);
+  if (estado.tarjetas && !estado.tarjeta && !e.eleccion_tarjeta) {
+    // "la graciosa", "la romántica", "la de perdón" → número de tarjeta
+    const tonos = TONOS[ficha.situaciones[estado.situacion]?.tono || 'calido'].map(normal);
+    const i = tonos.findIndex(n => normal(texto).includes(n.split(' ')[0]));
+    if (i >= 0) e.eleccion_tarjeta = i + 1;
+  }
   if (e.tarjeta_propia && estado.producto) {
     tarjetaCambiada = Boolean(estado.tarjeta) && estado.tarjeta !== e.tarjeta_propia;
     estado.tarjeta = e.tarjeta_propia; // se puede dictar o cambiar en cualquier momento
@@ -312,7 +331,8 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     const ops = opcionesPara(ficha, estado);
     estado.opciones = ops.map(p => p.id);
     const serio = ficha.situaciones[estado.situacion].tono === 'serio';
-    decir(frase || (serio ? 'Lo siento mucho. Te ayudo a que llegue algo lindo y a tiempo.' : 'Tranqui, esto tiene arreglo. 🌹'));
+    // En un duelo la apertura es siempre fija y sobria: no se arriesga una frase de la IA.
+    decir(serio ? 'Lo siento mucho. Te ayudo a que llegue algo lindo y a tiempo.' : (frase || 'Tranqui, esto tiene arreglo. 🌹'));
     decir([
       serio ? 'Te sugiero estas opciones:' : 'Según el tamaño de la macana, te recomiendo:',
       ...ops.map((p, i) => `*${i + 1}.* ${p.nombre} — ${p.detalle} — *${pesos(p.precio)}*`),
@@ -324,13 +344,24 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
       botones: ops.map((p, i) => ({ id: String(i + 1), texto: `${i + 1}. ${p.corto} · ${pesos(p.precio)}`.slice(0, 25) })) };
   }
 
+  // Paso 2b: colores (con eso la IA del evento dibuja el ramo). En un duelo no se pregunta.
+  const elegido = ficha.productos.find(x => x.id === estado.producto);
+  if (!estado.estilo) {
+    if (ficha.situaciones[estado.situacion].tono === 'serio') estado.estilo = 'blancos y verdes, sobrio';
+    else if (e.estilo) { estado.estilo = elegirEstilo(e.estilo); estado.estilo_sorpresa = /sorpren|azar|aleatori|random|da igual|lo que sea|elegi vos|cualquiera/.test(normal(e.estilo)); }
+  }
+  if (!estado.estilo) {
+    decir(`Buenísima elección: *${elegido.nombre}*. 👌`);
+    decir('¿Qué colores le gustan? Así te lo dibujo antes de armarlo 🎨 (también podés escribirme flores o colores, ej: "girasoles con algo violeta")');
+    return { respuestas: out, estado, botones: [{ id: 'rojos', texto: '❤️ Rojos y pasión' }, { id: 'pastel', texto: '🌸 Rosas y pasteles' }, { id: 'sorpresa', texto: '🎲 Sorprendeme' }] };
+  }
+
   // Paso 3: tarjeta.
   if (!estado.tarjeta) {
     if (!estado.tarjetas) {
       const { nombres, textos } = await escribirTarjetas(ficha, estado);
       estado.tarjetas = textos;
-      const p = ficha.productos.find(x => x.id === estado.producto);
-      decir(`Buenísima elección: *${p.nombre}*. 👌`);
+      decir(estado.estilo_sorpresa ? `🎲 Te tocó: *${estado.estilo}*. ¡Buena suerte la tuya!` : `Anotado: *${estado.estilo}* 🎨`);
       decir([
         'Te escribí la tarjeta en tres tonos:',
         ...textos.map((t, i) => `*${i + 1}. ${nombres[i][0].toUpperCase() + nombres[i].slice(1)}:* "${t}"`),
@@ -360,7 +391,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     if (estado.repreguntas >= 2) {
       return { respuestas: [`Perdón, me estoy enredando 🙏 ${FRASE_PERSONA}`], persona: 'Flora no logró entender un dato de la entrega', estado };
     }
-    if (falta.length === 3) decir('¡Tarjeta lista! ✍️ Ahora la entrega.');
+    if (falta.length === 3 || (!teniaTarjeta && estado.tarjeta)) decir('¡Tarjeta lista! ✍️ Ahora la entrega.');
     else if (anotado.length && !tarjetaCambiada) decir(`Anotado ✅ ${anotado.join(' · ')}.`);
     const ejemplo = { 'la dirección con el barrio': 'Mendoza 1500, Echesortu', 'el nombre de quien recibe': 'recibe Julieta', 'antes de qué hora tiene que llegar': 'antes de las 15' };
     decir(estado.repreguntas === 1

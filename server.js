@@ -3,7 +3,7 @@
 import http from 'node:http';
 import { readFile } from 'node:fs/promises';
 import { readFileSync, existsSync } from 'node:fs';
-import { join, extname, normalize } from 'node:path';
+import { join, extname, normalize, dirname } from 'node:path';
 import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as datos from './src/db.js';
@@ -11,6 +11,7 @@ import { atender, resumenParaPersona, textoPedidoCreado, textoCambioEstado } fro
 import { enviar, enviarConAcciones, escribiendo, imagen, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
 import { rutaDeReparto } from './src/reparto.js';
 import { ubicar } from './src/mapa.js';
+import { dibujarRamo, pasarATexto, eventoActivo } from './src/evento.js';
 import { iaActiva } from './src/ia.js';
 
 const PUERTO = Number(process.env.PORT || 3000);
@@ -21,6 +22,7 @@ const CLAVE_PANEL = process.env.PANEL_CLAVE || 'flores';
 const TOKEN_AVISO = process.env.WA_AVISO_TOKEN || '';
 const WA_NUMERO = process.env.WA_NUMERO || null;
 const PUBLICO = fileURLToPath(new URL('./public/', import.meta.url));
+const FOTOS = join(dirname(process.env.DB_RUTA || './datos/petalos.db'), 'fotos'); // ramos dibujados por la IA del evento
 
 let posicionRepartidor = null; // { lat, lng, en } — la manda el celular del repartidor
 
@@ -98,6 +100,8 @@ async function procesar(canal, chatId, nombre, texto) {
       ].join('\n'), c);
     }
     if (r.pedido) {
+      r.pedido.datos.imagen = c.estado.imagen || null;
+      r.pedido.datos.estilo = c.estado.estilo || null;
       r.pedido.datos.rescatada = Boolean(c.estado.seguimiento_enviado);
       r.pedido.datos.cliente = r.pedido.datos.cliente || c.nombre || null;
       r.pedido.datos.telefono = c.canal === 'whatsapp' ? c.chat_id.replace('@c.us', '') : null;
@@ -114,6 +118,12 @@ async function procesar(canal, chatId, nombre, texto) {
         `Llega antes de: ${hora(p.hora_limite)}`,
         `Tarjeta: "${d.tarjeta}"`,
       ].join('\n'), c);
+    }
+    // Con colores y tarjeta elegidos, la IA del evento dibuja el ramo mientras el cliente sigue.
+    if (eventoActivo() && c.estado.estilo && c.estado.tarjeta && c.estado.imagen_tarjeta !== c.estado.tarjeta && (c.estado.dibujos || 0) < 2) {
+      c.estado.imagen_tarjeta = c.estado.tarjeta;
+      c.estado.dibujos = (c.estado.dibujos || 0) + 1;
+      dibujarPrevia(c.id);
     }
     datos.guardarEstado(c);
     const botones = r.pedido ? [] : (r.botones || []);
@@ -154,7 +164,36 @@ function tomaPersona({ chatId, texto }) {
 
 // WhatsApp: junta los mensajes que llegan seguidos (la gente escribe en partes).
 const esperando = new Map();
+// Con la API del evento: se dibuja el ramo (colores + tarjeta) y se le manda al cliente antes de confirmar.
+function dibujarPrevia(charlaId) {
+  const c0 = datos.charlaPorId(charlaId);
+  const prod = ficha.productos.find(x => x.id === c0.estado.producto);
+  const extras = (c0.estado.extras || []).map(id => ficha.extras.find(e => e.id === id)?.nombre).filter(Boolean);
+  dibujarRamo({ id: charlaId, producto: prod?.nombre || 'ramo', detalle: prod?.detalle || '', extras, tarjeta: c0.estado.tarjeta,
+    tono: ficha.situaciones[c0.estado.situacion]?.tono, estilo: c0.estado.estilo }, FOTOS)
+    .then(archivo => archivo && enCola(`${c0.canal}:${c0.chat_id}`, async () => {
+      const c = datos.charlaPorId(charlaId);
+      const url = `/fotos/${archivo}`;
+      c.estado.imagen = url;
+      datos.guardarEstado(c);
+      if (c.estado.pedido_id) datos.sumarDatos(c.estado.pedido_id, { imagen: url });
+      if (c.canal === 'whatsapp' && SITIO) await imagen(c.chat_id, SITIO + url, '💌 Así quedaría tu regalo. Lo armamos a mano con estas flores.');
+      datos.anotar(c.id, 'aviso', `💌 Así quedaría tu regalo:
+${url}`);
+      avisar('mensaje', { charla_id: c.id, quien: 'aviso', texto: url });
+      avisar('tablero');
+    }))
+    .catch(e => console.error('[imagen]', e.message));
+}
+
 function recibirWhatsApp(m) {
+  if (m.tipo === 'audio') {
+    // Audio → texto con la API del evento, y sigue como si lo hubiera escrito.
+    pasarATexto(m.url).then(t => t
+      ? recibirWhatsApp({ tipo: 'entrante', chatId: m.chatId, nombre: m.nombre, texto: t })
+      : enviar(m.chatId, 'No pude escuchar bien el audio 🙈 ¿Me lo escribís?'));
+    return;
+  }
   if (m.tipo === 'saliente') return tomaPersona(m);
   if (m.tipo === 'ubicacion') {
     // El repartidor también puede mandar su ubicación por WhatsApp a la línea.
@@ -286,8 +325,17 @@ const servidor = http.createServer(async (req, res) => {
   res.setHeader('X-Content-Type-Options', 'nosniff');
   res.setHeader('Referrer-Policy', 'same-origin');
   try {
+    // Imágenes de los ramos dibujados (guardadas junto a la base de datos).
+    let f;
+    if (req.method === 'GET' && (f = ruta.match(/^\/fotos\/(ramo-\d+-[a-z0-9]+\.png)$/))) {
+      try {
+        const contenido = await readFile(join(FOTOS, f[1]));
+        res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+        return res.end(contenido);
+      } catch { return json(res, 404, { error: 'no existe' }); }
+    }
     if (req.method === 'GET' && ruta === '/api/salud') {
-      return json(res, 200, { ok: true, ia: iaActiva(), whatsapp: await estadoWA() });
+      return json(res, 200, { ok: true, ia: iaActiva(), ia_evento: eventoActivo(), whatsapp: await estadoWA() });
     }
     if (req.method === 'GET' && ruta === '/api/negocio') return json(res, 200, fichaPublica());
 

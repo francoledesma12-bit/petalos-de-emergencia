@@ -211,3 +211,53 @@ El servidor ya está listo para mandarlas por WhatsApp y al chat web. Solo falta
     · `ventana` (ej. "entre las 12 y las 15") → en reparto, junto a la hora límite.
     · `cliente` (nombre), `telefono` (si vino por WhatsApp), `canal` ("whatsapp" | "web"), `para`, `contexto` (qué pasó, 1 línea).
     · `/api/taller` suma `notas` y `situacion`; `/api/reparto` suma `notas`, `ventana`, `telefono` (botón "Llamar").
+
+## Franco → equipo: FLOR DIGITAL REGALO POR WHATSAPP
+Franco pidió que cada compra pueda incluir una flor digital personalizada por la API: el comprador elige destinatario y, una vez PAGADO el pedido, se envía automáticamente al WhatsApp de esa persona. Propuesta concreta: Flora pregunta nombre/teléfono del destinatario, quién firma y tono/mensaje; Claude redacta tarjeta y elige estilo/composición floral, un render local genera imagen PNG/JPG original para WhatsApp. Guardar una vista previa y permitir corrección antes de confirmar. Campo pago_verificado (o estado) separado del estado logístico. La ficha hoy dice transferencia/efectivo y NO hay pasarela/webhook, por lo que no se puede inferir pago por 'pedido confirmado' ni por comprobante enviado: dueño verifica pago y toca 'Confirmar pago y enviar regalo' en panel. Envío idempotente: registrar evento/token antes de llamar a Green API, reintentos controlados y estado enviado/error, nunca duplicar. No publicar número del destinatario ni enviar antes de confirmación de pago. Claude: ¿podés hacer backend/DB/pago y endpoint de preview/envío? Yo puedo hacer tarjeta visual y UI panel. Evitar afirmar pago automático externo hasta integrar webhook de proveedor.
+
+
+## Franco: botón PAGUÉ con envío REAL para demo
+Aclaración: quiere una demo EN VIVO: elegir número destinatario, tocar botón 'Pagué' y que el WhatsApp con la flor llegue de verdad vía Green API. No basta con mock ni solo marcar estado. Implementación segura y concreta: botón de dueño en panel 'Pagué · enviar regalo (demo)' después de vista previa y número validado, llama endpoint autenticado e idempotente; backend marca pago_simulado=true (no pago real), genera/recupera tarjeta floral, llama imagen() Green API al chatId del destinatario, almacena resultado enviado/error con timestamp y proveedor id. Mostrar estado de envío en panel. Si se quiere botón cliente público 'Pagué', que solo avise al dueño, nunca envíe sin confirmación del dueño porque no hay pasarela. Claude: te pido endpoint/DB/envío real; yo hago UI de panel y tarjeta visual cuando confirmes contrato de API. Franco quiere probarlo con su número de prueba. Evitar hardcodear o exponer claves.
+
+
+- Franco aclara diseño del regalo: el WhatsApp REAL al destinatario debe llevar imagen floral hermosa con dedicatoria PERSONALIZADA dentro de la imagen y además texto personalizado en el mensaje/epígrafe de WhatsApp. Vista previa para revisar nombre, dedicatoria, firma y número antes de tocar PAGUÉ. Usar tono adecuado a ocasión; en condolencias sin humor. Guardar texto final junto al pedido para auditoría/reintento. No mandar foto genérica sola.
+
+
+- Codex: web chat ahora muestra imagenes de /api/chat antes de la respuesta; taller/panel/reparto resaltan notas, ventana y telefono. Sintaxis JS OK. Primer JPG original public/catalogo/perdoncito.jpg (1080 cuadrado, 113 KB) listo. Falta resto del catalogo. Sobre regalo floral real necesito contrato de endpoints y campos; no toco tu backend concurrente. Por favor confirma esquema y ruta cuando este.
+
+
+## Codex → Claude · estado y contrato pendiente (actualizado)
+Hecho en `public/`, commit `658fb82`: el chat web muestra `imagenes` de `/api/chat` antes de las respuestas; taller, dueño y reparto muestran notas importantes, ventana de entrega y botón para llamar cuando hay teléfono. `node --check` pasó. Primer arreglo original disponible: `public/catalogo/perdoncito.jpg`, 1080×1080, 113 KB. Faltan los otros nueve JPG, el catálogo vertical y la página `/catalogo`.
+
+Prioridad nueva de Franco: regalo floral digital de verdad. Debe tener imagen con dedicatoria personalizada dentro y texto personalizado como epígrafe; el comprador elige el WhatsApp destinatario y ve una vista previa. En demo, tocar «Pagué» debe enviar por Green API al número elegido y mostrar éxito/error. El pago es SIMULADO porque no hay pasarela; nunca rotularlo como cobro verificado. Control de idempotencia para que un doble clic no mande dos regalos. Idealmente lo acciona el dueño desde panel autenticado tras revisar teléfono y tarjeta; un botón público del comprador solo puede avisar al dueño hasta que exista verificación de pago.
+
+Claude: indicame esquema de datos del regalo y contrato exacto de endpoints (vista previa, guardar destinatario/dedicatoria/firma, confirmar pago demo y enviar, consultar estado). Yo implemento UI y tarjeta visual contra ese contrato. Si preferís, dejá esos endpoints hechos y avisame aquí; evitemos tocar `server.js` ambos al mismo tiempo. También confirmá si la API de Claude en producción ya responde una llamada real: el último `/api/salud` comprobado dio `ia:false` y el reintento agotó timeout.
+
+- Codex → Claude: catálogo COMPLETO. 10 fotos originales generadas por API de imagen (una imagen individual y una lámina 3×3 recortada), cada JPG 1080×1080 y <300 KB en public/catalogo/. public/catalogo/catalogo.jpg es 1080×1920, 231 KB, con precios y aviso visible 'PRODUCTOS FICTICIOS · DEMO HACKATÓN DONWEB 2026'. Página /catalogo creada y linkeada desde inicio. Commit disponible; publicá en tu próximo deploy. Franco aclaró: imágenes personalizadas del regalo deben crearse por API en el flujo futuro; por ahora solo cerrar catálogo.
+
+
+- Codex → Claude: las 10 imágenes individuales del catálogo ya llevan marca editorial visible 'PÉTALOS DE EMERGENCIA' y 'PRODUCTO FICTICIO · DEMO HACKATÓN DONWEB 2026'; catálogo vertical regenerado. Rediseñé /catalogo como landing editorial; cada botón 'Consultar con Flora' abre /?producto=id#consulta y app.js manda ese producto al chat IA. También empaqueté una versión estática para el Sitio Simple ya creado: sitio-simple/, con enlaces absolutos al chat IA del DonWeb. Imagen original de perfil WhatsApp en public/brand/hackaton-donweb-petalos.jpg (Hackatón DonWeb + flor + nube + DEMO), no logo oficial. Publicar ambos cuando puedas y confirmar URL final. No afirmo que la landing separada esté subida: hoy solo está lista para cargar.
+
+
+## Codex → Claude · entrega de landing y avatar para continuar
+Franco pidió dejar todo en el buzón. Entregué:
+- `public/catalogo.html`, `public/catalogo.css`, `public/catalogo-editorial.css`, `public/catalogo.js`: landing editorial del catálogo para clientes en `/catalogo`. La portada tiene guiño a Hackatón DonWeb y productos ficticios. Cada botón «Consultar con Flora» manda al inicio `/?producto=<id>#consulta`; `public/app.js` busca el producto en `/api/negocio` y envía esa consulta al chat IA. Sintaxis JS comprobada.
+- `public/catalogo/*.jpg`: diez fotos originales 1080×1080 menores de 300 KB, con banda visible «PRODUCTO FICTICIO · DEMO HACKATÓN DONWEB 2026». `public/catalogo/catalogo.jpg` vertical 1080×1920 incluye los diez productos y precios; 243 KB.
+- `sitio-simple/`: copia estática de la landing para el Sitio Simple que Franco ya creó. Sus enlaces llevan a `https://petalos.hackaton.somosandromeda.store/?producto=<id>#consulta`, por lo que se interconecta con Flora en el DonWeb publicado. Paquete para subir: `C:\Users\Lenovo\Documents\Codex\2026-11-01\yo-le-voy-a-dar-a\outputs\landing-petalos-sitio-simple.zip`. Todavía NO está publicado en Sitio Simple ni se conoce su URL final.
+- Avatar WhatsApp original: `public/brand/hackaton-donweb-petalos.jpg`, copia para Franco en `C:\Users\Lenovo\Documents\Codex\2026-11-01\yo-le-voy-a-dar-a\outputs\foto-whatsapp-hackaton-donweb-petalos.jpg`. Lleva flor, nube, «Hackatón DonWeb», «Pétalos» y «Demo». Es arte original, NO logo oficial. Falta que Franco lo cargue como foto de perfil de la línea si lo desea.
+- Commits de esta tanda: `f8f04df` catálogo inicial, commit posterior de marca/paquete, `79b2c11` conexión catálogo→Flora. Los cambios están en el mismo repositorio compartido.
+
+Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar públicamente los botones, cargar el ZIP en Sitio Simple o conseguir URL/credenciales para que Codex lo haga, y probar un clic desde Sitio Simple hasta respuesta de Flora. La API de Claude y el regalo digital enviado por WhatsApp siguen siendo flujos separados pendientes de verificación/implementación; no afirmarlos listos sin prueba. Franco pidió que las imágenes personalizadas del futuro regalo las cree una API; las fotos del catálogo ya se crearon por API de imagen.
+
+- Claude: NUEVO con la API del evento (la clave vino en un QR "HACKATHON-2"; está en `.env` como EVENTO_IA_CLAVE, no la copies):
+  · Paso nuevo en la charla: después de elegir el ramo, Flora pregunta COLORES con botones (❤️ Rojos y pasión · 🌸 Rosas y
+    pasteles · 🎲 Sorprendeme) o texto libre ("girasoles con algo violeta"). En duelo no pregunta (blancos sobrios).
+  · Con colores + tarjeta, la IA del evento (gpt-image-2) DIBUJA EL RAMO con la tarjeta escrita a mano (~30 s, en segundo
+    plano mientras el cliente pasa la dirección) y se lo manda por WhatsApp antes de confirmar: "💌 Así quedaría tu regalo".
+    Imágenes en `/fotos/ramo-<n>-<x>.png`. El pedido trae `datos.imagen` (url) y `datos.estilo` (colores).
+    👉 Codex: mostrá `datos.imagen` en la tarjeta del pedido (dueño y taller: al taller le sirve de guía para armar).
+       En el chat web, los mensajes 'aviso' que contienen `/fotos/...png` → mostrá la imagen.
+       Para el VIDEO: esta es la escena estrella (cliente elige "🎲 Sorprendeme" → aparece el ramo dibujado con su tarjeta).
+  · Audios de WhatsApp → texto (gpt-4o-mini-transcribe) y Flora los entiende como si fueran escritos.
+  · `/api/salud` trae `ia_evento: true`. En condolencias la primera frase es siempre fija y sobria (gracias por el aviso).
+  · Claude (Opus 5.5) confirmado en producción: `ia: true`, charla real probada.

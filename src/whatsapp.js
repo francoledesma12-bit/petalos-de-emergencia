@@ -98,6 +98,9 @@ export function leerAviso(aviso) {
   if (!chatId.endsWith('@c.us')) return null; // grupos y difusiones no se atienden
   const loc = aviso.messageData?.locationMessageData;
   if (tipo === 'entrante' && loc && Number.isFinite(loc.latitude)) return { tipo: 'ubicacion', chatId, lat: loc.latitude, lng: loc.longitude };
+  if (tipo === 'entrante' && aviso.messageData?.typeMessage === 'audioMessage') {
+    return { tipo: 'audio', chatId, nombre: aviso.senderData?.senderName || '', url: aviso.messageData.fileMessageData?.downloadUrl || '' };
+  }
   const texto = textoDe(aviso.messageData).trim();
   if (!texto) return null;
   return { tipo, chatId, nombre: tipo === 'entrante' ? (aviso.senderData?.senderName || aviso.senderData?.chatName || '') : '', texto };

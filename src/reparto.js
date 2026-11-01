@@ -34,7 +34,7 @@ export async function rutaDeReparto(ficha, pedidos) {
     `Sos el que organiza el reparto de una florería en ${ficha.direccion_local}. Ahora son las ${hhmm(Date.now())}.`,
     `Ordená estas entregas para que ninguna llegue tarde y se maneje lo menos posible (conocés las calles de ${ficha.ciudad}):`,
     lista,
-    'JSON: {"orden":[números de pedido en orden],"explicacion":"una o dos frases simples para el repartidor, sin tecnicismos"}',
+    'JSON: {"orden":[números de pedido en orden],"explicacion":"una o dos frases simples para el repartidor: en qué orden va y por qué (urgencia, cercanía). NO des indicaciones de calles ni giros"}',
   ].join('\n'));
 
   const ids = new Set(pedidos.map(p => p.id));

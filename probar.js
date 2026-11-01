@@ -26,7 +26,8 @@ console.log('\n━━━ 1. Macana: olvido de aniversario, de punta a punta');
   const d = cliente();
   await d('hola');
   ver((await d('me olvidé del aniversario con Caro y está furiosa')).includes('Sillón'), 'recomienda ramos para la macana');
-  ver((await d('la 2 con bombones')).includes('tres tonos'), 'escribe la tarjeta en 3 tonos');
+  ver((await d('la 2 con bombones')).includes('colores'), 'pregunta los colores para dibujar el ramo');
+  ver((await d('🎲 Sorprendeme')).includes('tres tonos'), 'sorteo de colores y tarjeta en 3 tonos');
   await d('la 2');
   const resumen = await d('Bv Oroño 1200, Centro, recibe Carolina, antes de las 19');
   ver(resumen.includes('68.500'), 'total calculado con código: $ 68.500');
@@ -88,7 +89,9 @@ console.log('\n━━━ 5. Botones en la charla');
   const r2 = await (await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sesion, texto: r.botones[1].texto }) })).json();
   ver(r2.botones?.length === 3 && /Sillón|Perdoncito|Rodillas/.test(r2.botones.map(b => b.texto).join()), 'tocar "Nos peleamos" muestra los ramos como botones');
   const r3 = await (await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sesion, texto: r2.botones[1].texto }) })).json();
-  ver(r3.respuestas.join().includes('tres tonos') && r3.botones?.length === 3, 'tocar un ramo pasa a las tarjetas con botones');
+  ver(r3.respuestas.join().includes('colores') && r3.botones?.some(b => b.texto.includes('Sorprendeme')), 'tocar un ramo pregunta colores con botones');
+  const r4 = await (await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sesion, texto: r3.botones[0].texto }) })).json();
+  ver(r4.respuestas.join().includes('tres tonos') && r4.botones?.length === 3, 'elegir colores pasa a las tarjetas con botones');
 }
 
 if (process.env.TALLER_CLAVE && process.env.REPARTO_CLAVE) {
@@ -106,7 +109,7 @@ if (process.env.TALLER_CLAVE && process.env.REPARTO_CLAVE) {
   ver(taller.rol === 'taller' && reparto.rol === 'reparto', 'cada clave entra con su rol');
   const t = como(taller.cookie), rp = como(reparto.cookie);
   const d = cliente();
-  await d('hola'); await d('nos peleamos con Juli'); await d('1'); await d('2');
+  await d('hola'); await d('nos peleamos con Juli'); await d('1'); await d('rojos'); await d('2');
   await d('Mendoza 1500, Echesortu, recibe Juli, antes de las 21'); await d('si');
   const cola = (await t('/api/taller')).j.pedidos;
   ver(Array.isArray(cola) && cola.every(p => !('total' in p) && p.datos.tarjeta !== undefined), 'el taller ve qué armar y la tarjeta, sin precios');
