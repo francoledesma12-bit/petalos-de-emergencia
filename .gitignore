@@ -2,3 +2,4 @@ node_modules
 datos
 .env
 *.db*
+work

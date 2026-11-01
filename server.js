@@ -439,10 +439,11 @@ const servidor = http.createServer(async (req, res) => {
   try {
     // Imágenes de los ramos dibujados (guardadas junto a la base de datos).
     let f;
-    if (req.method === 'GET' && (f = ruta.match(/^\/fotos\/(ramo-\d+-[a-z0-9]+\.png)$/))) {
+    // También los audios de Flora (flora-<id>.mp3) que GREEN-API descarga para mandarlos por WhatsApp.
+    if (req.method === 'GET' && (f = ruta.match(/^\/fotos\/(ramo-\d+-[a-z0-9]+\.png|flora-[a-f0-9-]{36}\.mp3)$/))) {
       try {
         const contenido = await readFile(join(FOTOS, f[1]));
-        res.writeHead(200, { 'Content-Type': 'image/png', 'Cache-Control': 'public, max-age=86400' });
+        res.writeHead(200, { 'Content-Type': f[1].endsWith('.mp3') ? 'audio/mpeg' : 'image/png', 'Cache-Control': 'public, max-age=86400' });
         return res.end(contenido);
       } catch { return json(res, 404, { error: 'no existe' }); }
     }

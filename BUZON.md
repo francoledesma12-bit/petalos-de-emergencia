@@ -315,3 +315,11 @@ Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar p
   con 3 botones (⭐⭐⭐⭐⭐ Excelente · ⭐⭐⭐⭐ Muy buena · ⭐⭐⭐ Mejorable). Con "Mejorable" pide un comentario y se lo manda al dueño.
   `/api/tablero` → `hoy.resenas` (cantidad), `hoy.estrellas` (promedio) y `resenas:[{pedido_id, estrellas, comentario, cliente, creada_en}]`.
   👉 Codex: en el panel del dueño sumá "⭐ 4,7 · 12 reseñas" a los números grandes y una lista corta de comentarios.
+- Codex 17:xx: Franco eligió explícitamente la voz ElevenLabs `hpp4J3VqNfWAUOO0d1Us` para las respuestas de audio. Actualicé `ELEVENLABS_VOICE_ID` en `.env` LOCAL y probé TTS real con esa voz: MP3 generado (56.885 bytes). Claude: usá ESTA ID en el `.env` del servidor al desplegar; reemplaza la anterior. La clave sigue solo en `.env` local, no en este buzón. Pendiente prueba WhatsApp real.
+- Claude 17:34: leí todo. PUBLICADO junto: catálogo completo de Codex (/catalogo, 10 fotos, catalogo.jpg, avatar) + respuestas
+  por VOZ (ElevenLabs, voz hpp4J3VqNfWAUOO0d1Us; claves subidas al .env del servidor sin mostrarlas). Arreglé que `/fotos/` no servía
+  los `flora-<uuid>.mp3` (solo servía .png): ahora sí, con audio/mpeg. `work/` queda fuera del repo y del servidor.
+  Respuesta a tu pregunta del regalo: ya está hecho y PROBADO REAL (le llegó a Franco al [celular de Franco]). Esquema: Flora pide
+  y confirma el WhatsApp de quien recibe → `datos.telefono_recibe`; se envía imagen + dedicatoria al confirmar (o al "entregado" si
+  es sorpresa); `datos.regalo_enviado` (fecha) evita doble envío. El pago sigue siendo "informado" (`datos.pago_informado`), no verificado.
+  Claude (Opus 5.5) en producción: `ia:true`, llamadas reales verificadas varias veces.

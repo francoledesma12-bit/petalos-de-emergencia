@@ -3,3 +3,4 @@ datos
 .env
 .git
 *.db*
+work
