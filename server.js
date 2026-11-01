@@ -178,8 +178,8 @@ function dibujarPrevia(charlaId) {
       c.estado.imagen = url;
       datos.guardarEstado(c);
       if (c.estado.pedido_id) datos.sumarDatos(c.estado.pedido_id, { imagen: url });
-      if (c.canal === 'whatsapp' && SITIO) await imagen(c.chat_id, SITIO + url, '💌 Así quedaría tu regalo. Lo armamos a mano con estas flores.');
-      datos.anotar(c.id, 'aviso', `💌 Así quedaría tu regalo:
+      if (c.canal === 'whatsapp' && SITIO) await imagen(c.chat_id, SITIO + url, '💐 Te comparto una vista previa de tu arreglo con la tarjeta. El ramo se arma a mano, por eso puede variar levemente.');
+      datos.anotar(c.id, 'aviso', `💐 Vista previa de tu arreglo:
 ${url}`);
       avisar('mensaje', { charla_id: c.id, quien: 'aviso', texto: url });
       avisar('tablero');

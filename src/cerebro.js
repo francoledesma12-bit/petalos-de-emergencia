@@ -352,7 +352,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
   }
   if (!estado.estilo) {
     decir(`Buenísima elección: *${elegido.nombre}*. 👌`);
-    decir('¿Qué colores le gustan? Así te lo dibujo antes de armarlo 🎨 (también podés escribirme flores o colores, ej: "girasoles con algo violeta")');
+    decir('¿Qué colores o flores prefiere? Podés elegir una opción o escribirlo, por ejemplo: "girasoles con algo violeta".');
     return { respuestas: out, estado, botones: [{ id: 'rojos', texto: '❤️ Rojos y pasión' }, { id: 'pastel', texto: '🌸 Rosas y pasteles' }, { id: 'sorpresa', texto: '🎲 Sorprendeme' }] };
   }
 
@@ -361,7 +361,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     if (!estado.tarjetas) {
       const { nombres, textos } = await escribirTarjetas(ficha, estado);
       estado.tarjetas = textos;
-      decir(estado.estilo_sorpresa ? `🎲 Te tocó: *${estado.estilo}*. ¡Buena suerte la tuya!` : `Anotado: *${estado.estilo}* 🎨`);
+      decir(estado.estilo_sorpresa ? `Elegimos para vos: *${estado.estilo}* 🌸` : `Perfecto, va en *${estado.estilo}* 🌸`);
       decir([
         'Te escribí la tarjeta en tres tonos:',
         ...textos.map((t, i) => `*${i + 1}. ${nombres[i][0].toUpperCase() + nombres[i].slice(1)}:* "${t}"`),
