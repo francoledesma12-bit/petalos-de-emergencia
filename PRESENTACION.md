@@ -14,6 +14,8 @@ Esto nace de trabajo con un comercio real, Rosario Exclusivos. Al revisar sus co
 
 Pétalos aplica lo aprendido a una situación donde el tiempo pesa mucho: un pedido de flores con destinatario, mensaje, dirección y hora límite. **La florería de esta demo es ficticia**; el problema y el diseño del traspaso vienen de experiencia con clientes reales. No afirmar que Pétalos ya aumentó ventas ni que los resultados de Rosario Exclusivos se trasladan automáticamente a otro negocio.
 
+**Ejemplo real, si hay tiempo para contarlo:** en Rosario Exclusivos una persona consultó por un estabilizador. El asistente identificó el modelo y preguntó cómo pagaría; pasó esos datos al vendedor, que cotizó y reservó. Más tarde quedó registrada una factura del mismo producto. Esto prueba un recorrido observable con IA y atención humana, no que la venta haya ocurrido *gracias* a la IA.
+
 ## Recorrido de 2 minutos
 
 1. **El problema (20 s).** «Trabajando con Rosario Exclusivos vimos algo común en las pymes: las consultas llegan con información incompleta y el equipo necesita contexto para seguirlas. Acá lo llevamos a una florería: alguien necesita flores antes de las seis. La urgencia no puede quedar perdida entre mensajes».
