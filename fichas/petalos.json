@@ -8,6 +8,7 @@
   "direccion_local": "Pichincha, Rosario",
   "horario": { "dias": [0, 1, 2, 3, 4, 5, 6], "abre": 9, "cierra": 20, "ultimo_envio_mismo_dia": 18 },
   "minutos_para_volver_si_nadie_contesta": 2,
+  "minutos_para_rescatar_venta": 3,
   "pago": "Transferencia o efectivo al recibir. El alias se manda al confirmar.",
   "alias_pago": "petalos.emergencia",
 

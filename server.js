@@ -14,6 +14,7 @@ import { iaActiva } from './src/ia.js';
 const PUERTO = Number(process.env.PORT || 3000);
 const NEGOCIO = process.env.NEGOCIO || 'petalos';
 const ficha = JSON.parse(readFileSync(new URL(`./fichas/${NEGOCIO}.json`, import.meta.url), 'utf8'));
+if (process.env.RESCATE_MINUTOS) ficha.minutos_para_rescatar_venta = Number(process.env.RESCATE_MINUTOS); // para pruebas
 const CLAVE_PANEL = process.env.PANEL_CLAVE || 'flores';
 const TOKEN_AVISO = process.env.WA_AVISO_TOKEN || '';
 const WA_NUMERO = process.env.WA_NUMERO || null;
@@ -84,6 +85,7 @@ async function procesar(canal, chatId, nombre, texto) {
       ].join('\n'));
     }
     if (r.pedido) {
+      r.pedido.datos.rescatada = Boolean(c.estado.seguimiento_enviado);
       const p = datos.crearPedido(NEGOCIO, c.id, r.pedido.datos, r.pedido.total, r.pedido.hora_limite);
       c.estado.pedido_id = p.id;
       dichas.push(textoPedidoCreado(ficha, p.id, p.total, p.datos.tono));
@@ -157,6 +159,30 @@ setInterval(async () => {
     avisar('tablero');
   }
 }, 20000);
+
+// Rescate de ventas: el cliente que vio opciones y se quedó callado recibe UN mensaje para cerrar.
+setInterval(async () => {
+  const ahora = Date.now();
+  const callados = datos.db.prepare(`
+    SELECT id FROM charlas WHERE negocio=? AND atiende='flora' AND ultimo_mensaje_en BETWEEN ? AND ?
+    AND json_extract(estado,'$.situacion') IS NOT NULL AND json_extract(estado,'$.pedido_id') IS NULL
+    AND json_extract(estado,'$.seguimiento_enviado') IS NULL`)
+    .all(NEGOCIO, ahora - 6 * 3600000, ahora - ficha.minutos_para_rescatar_venta * 60000);
+  for (const { id } of callados) {
+    await enCola(`rescate:${id}`, async () => {
+      const c = datos.charlaPorId(id);
+      if (!c || c.estado.seguimiento_enviado || c.estado.pedido_id) return;
+      c.estado.seguimiento_enviado = true;
+      datos.guardarEstado(c);
+      const recomendado = ficha.productos.find(p => p.id === (c.estado.producto || c.estado.opciones?.[1] || c.estado.opciones?.[0]));
+      const texto = c.estado.producto
+        ? `¿Lo terminamos? 🌹 Te guardé el *${recomendado?.nombre}* a medio armar. Si me pasás lo que falta, hoy llega a tiempo.`
+        : `¿Pudiste elegir? 🌹 Para esto el que más sale es el *${recomendado?.nombre}*. Decime el número y lo armo ya, así llega a tiempo.`;
+      await decir(c, texto, 'aviso');
+      avisar('tablero');
+    });
+  }
+}, 30000);
 
 // ---------- Ayudas HTTP ----------
 const TIPOS = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8',

@@ -14,6 +14,17 @@ export const FRASE_PERSONA = 'Te paso con una persona del equipo para que lo vea
 
 // ---------- 1. Entender ----------
 
+// "2", "el 2", "dale la 2", "el segundo", "la del medio" → 2. Solo en mensajes cortos, para no confundir direcciones.
+function numeroElegido(t) {
+  if (t.length > 40) return null;
+  const n = t.match(/(?:^|[^\d])([1-3])(?![\d:.,]?\d)/);
+  if (n) return Number(n[1]);
+  if (/primer|primera/.test(t)) return 1;
+  if (/segund|del medio/.test(t)) return 2;
+  if (/tercer|ultim/.test(t)) return 3;
+  return null;
+}
+
 function entenderConReglas(texto, estado, ficha) {
   const t = normal(texto);
   const r = {};
@@ -29,15 +40,17 @@ function entenderConReglas(texto, estado, ficha) {
   else if (/sorpresa|enamor|novia|novio|conquist|primera cita/.test(t)) r.situacion = 'romance';
 
   if (estado.opciones && !estado.producto) {
-    const n = t.match(/^\s*(?:el |la |opcion )?([1-3])\b/);
-    if (n) r.eleccion = estado.opciones[Number(n[1]) - 1];
+    const n = numeroElegido(t);
+    if (n) r.eleccion = estado.opciones[n - 1];
+    else if (/mas barat|economic/.test(t)) r.eleccion = estado.opciones[0];
+    else if (/mas caro|mas grande|el mejor|tirar la casa/.test(t)) r.eleccion = estado.opciones.at(-1);
   }
   for (const p of ficha.productos) if (t.includes(normal(p.nombre).split(' ').slice(1).join(' '))) r.eleccion = p.id;
   r.extras = ficha.extras.filter(e => t.includes(normal(e.nombre).split(' ').pop()) || t.includes(e.id)).map(e => e.id);
 
   if (estado.tarjetas && !estado.tarjeta) {
-    const n = t.match(/^\s*(?:la )?([1-3])\b/);
-    if (n) r.eleccion_tarjeta = Number(n[1]);
+    const n = numeroElegido(t);
+    if (n) r.eleccion_tarjeta = n;
     if (/sin tarjeta|no quiero tarjeta|sin mensaje/.test(t)) r.sin_tarjeta = true;
   }
   const hora = t.match(/(?:antes de las|a las|para las|hasta las|tipo|a eso de las)\s*(\d{1,2})(?:[:.](\d{2}))?/);

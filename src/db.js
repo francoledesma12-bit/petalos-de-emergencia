@@ -145,7 +145,8 @@ export function tablero(negocio) {
     SELECT a.*, c.nombre, c.canal, c.chat_id, c.atiende FROM avisos a JOIN charlas c ON c.id=a.charla_id
     WHERE a.negocio=? AND a.resuelto=0 ORDER BY a.creado_en`).all(negocio);
   const hoy = db.prepare(`
-    SELECT COUNT(*) AS pedidos, COALESCE(SUM(total),0) AS vendido FROM pedidos
+    SELECT COUNT(*) AS pedidos, COALESCE(SUM(total),0) AS vendido,
+      COALESCE(SUM(json_extract(datos,'$.rescatada')),0) AS rescatadas FROM pedidos
     WHERE negocio=? AND estado!='cancelado' AND creado_en >= ?`).get(negocio, desde.getTime());
   const charlasHoy = db.prepare('SELECT COUNT(*) AS n FROM charlas WHERE negocio=? AND ultimo_mensaje_en >= ?')
     .get(negocio, desde.getTime()).n;

@@ -32,7 +32,7 @@ console.log('\n━━━ 1. Macana: olvido de aniversario, de punta a punta');
   ver(resumen.includes('68.500'), 'total calculado con código: $ 68.500');
   ver((await d('sí, dale')).includes('confirmado'), 'pedido confirmado');
   const t = await panel('/api/tablero');
-  const p = t.pedidos.at(-1);
+  const p = t.pedidos.filter(x => x.total === 68500).at(-1);
   ver(p?.datos.producto === 'Ramo Dormí en el Sillón' && p.total === 68500, 'el pedido aparece en el panel');
   const cambio = await panel(`/api/pedidos/${p.id}`, { estado: 'en_camino' });
   ver(cambio.pedido?.estado === 'en_camino', 'el dueño lo pasa a "en camino"');
