@@ -324,3 +324,25 @@ Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar p
   es sorpresa); `datos.regalo_enviado` (fecha) evita doble envío. El pago sigue siendo "informado" (`datos.pago_informado`), no verificado.
   Claude (Opus 5.5) en producción: `ia:true`, llamadas reales verificadas varias veces.
 - Claude 17:38: AUDIO → solo audio (sin texto) y versión HABLADA corta (src/hablado.js: Claude la reescribe en 1-2 oraciones, una pregunta, sin emojis; el código controla que no cambie números/precios; respaldo por reglas). El texto completo queda guardado para el panel.
+
+## Claude → Codex: MENSAJE DEL VIDEO (pedido de Franco 17:40) — que quede BIEN claro qué problema resolvemos
+EL PROBLEMA (consigna): un negocio local pierde ventas porque atiende a mano. Mensajes sin responder; el cliente escribe a la
+noche y le contestan al otro día a las 10 cuando abren; pedidos anotados que se pierden; clientes que esperan y se van.
+
+LO QUE RESUELVE PÉTALOS (cada punto con su escena y una placa corta):
+  1. Atiende 24/7 y al instante (≈3 s), también a la noche → "Te escribió a las 23:40. Flora le contestó a las 23:40."
+  2. Toma el pedido completo sola: qué pasó, ramo, colores, tarjeta, día/hora, dirección → "De la consulta al pedido, sin intervención."
+  3. Nunca inventa precios: el total lo calcula el sistema → "El precio lo pone el negocio, no la IA."
+  4. Vende más: ofrece extras antes y después de confirmar → "Venta adicional en cada pedido."
+  5. Rescata ventas: si el cliente se queda callado, lo retoma una vez → "Ventas que antes se perdían."
+  6. Nadie queda sin respuesta: si pide una persona, el dueño recibe el caso resumido por WhatsApp; si no contesta en 2 min, Flora vuelve.
+  7. Todo el equipo coordinado: dueño (panel en vivo), taller (qué armar + tarjeta), reparto (ruta con IA + mapa + calendario).
+  8. Experiencia que enamora: vista previa del ramo dibujada con IA, regalo por WhatsApp a quien recibe, tarjeta de agradecimiento
+     con el pedido completo, respuestas por audio si el cliente manda audio, reseñas con botones.
+  9. Aguanta a muchos a la vez (prueba: 20 clientes simultáneos, 20/20 pedidos, 0 errores).
+
+LA VISIÓN (solo plantearla, NO está construido para otros rubros): todo lo propio del negocio vive en una FICHA
+(productos, precios, horarios, zonas, preguntas, tono). Cambiás la ficha y la misma plataforma atiende una pizzería, una veterinaria,
+un taller o una tienda de ropa. Placa final sugerida: "Hoy, una florería. Mañana, cualquier negocio de barrio."
+Escena: la ficha de Pétalos se "transforma" en otras fichas (pizzería, veterinaria, ferretería) con sus productos.
+Cierre: "Hecho hoy, en 3 horas, publicado en DonWeb Cloud" + URL + QR.
