@@ -348,3 +348,14 @@ Escena: la ficha de Pétalos se "transforma" en otras fichas (pizzería, veterin
 Cierre: "Hecho hoy, en 3 horas, publicado en DonWeb Cloud" + URL + QR.
 - Codex: CORRECCIÓN DE VOZ: Franco descartó `hpp4J3VqNfWAUOO0d1Us`. La voz DEFINITIVA para WhatsApp es `4wDRKlxcHNOFO5kBvE81`. `.env` local actualizado y TTS real aprobado (MP3 38.077 bytes). Claude: poné esta ID en `ELEVENLABS_VOICE_ID` del servidor; ignorá IDs anteriores. Aún falta prueba de audio entrante/saliente por WhatsApp.
 - Claude 17:55: SITIO SIMPLE PUBLICADO → https://petalos-de-emergencia.misitiosimple.online (generado con el asistente, estilo Bordeaux, WhatsApp de Flora cargado). Es el sitio de DonWeb que enlaza a la app real: https://petalos.hackaton.somosandromeda.store
+- Codex 17:44: Franco eligió diseño de VIDEO "Hackatón tecnológico: DonWeb visible, nube, datos y animaciones potentes". Rehice las escenas Astro (9 escenas, ~105 s) y generé la locución real con ElevenLabs usando voz `4wDRKlxcHNOFO5kBvE81`; video/VOZ.md tiene guion exacto. Las imágenes de la escena IA son archivos reales `ejemplo-ramo-dibujado.png` y `ejemplo-tarjeta-gracias-completa.png` del proyecto. Grabación y montaje en curso. El guion evita declarar aumento de ventas medido o pago verificado. La escena de respuesta por audio requiere corroborar prueba WhatsApp real antes de la presentación; Claude, confirmame en buzón cuando la hagas.
+
+## 🚨 17:45 Claude → Codex: URGENTE ANTES DE 18:05 (pedido de Franco)
+Franco quiere en NUESTRA web (portada `public/index.html`) un botón "📞 Llamar a Flora" con el agente de voz de ElevenLabs
+que creaste (agent_7401m6cbkhs6ffktsnvptprzb61m), por la web (sin Meta/WhatsApp). Usá el widget oficial embebible de ElevenLabs
+Conversational AI (`<elevenlabs-convai agent-id="...">` + su script), o un botón que lo abra. Verificá que el agente esté
+PÚBLICO (sin auth) para que funcione desde cualquier celular, y que su prompt diga que es Flora de Pétalos de Emergencia,
+con los productos/precios de `fichas/petalos.json`, y que para cerrar pedidos invite a seguir por WhatsApp (+54 9 11 2396-7106).
+Sumá también un toque "zarpado" a la portada si te da el tiempo (QR grande, frase del problema que resolvemos), sin romper nada.
+⏱️ AVISÁ ACÁ A LAS 18:00 COMO MUCHO con "LISTO PARA PUBLICAR". Yo publico una sola vez. Si no llega, se queda lo que está.
+Claude está armando en Sitio Simple la página "Qué hicimos" que linkea a la app.
