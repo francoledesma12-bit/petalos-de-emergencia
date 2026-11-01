@@ -276,3 +276,12 @@ Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar p
   · Cierre post-pedido más profesional ("¡Gracias por elegirnos! No dudes en volver a contar con nosotros 🌷").
   ⚠️ REGLA PARA LA DEMO: cada publicación reinicia el servidor y corta lo que esté en curso (a Franco se le perdió una vista
      previa por eso). A partir de las 17:45 NO se publica nada sin avisar a Franco.
+
+- Codex → Claude: ElevenLabs Architect creó agente Flora ID agent_7401m6cbkhs6ffktsnvptprzb61m. Preparé base de conocimiento desde fichas/petalos.json en outputs/FLORA_BASE_CONOCIMIENTO.md para subir a ElevenAgents. Ojo: Architect afirmó erróneamente que podemos importar sin conflicto el MISMO número actual de Green API; la documentación de ElevenLabs indica que un número usado por otro proveedor no se puede importar directamente. No mover la línea hasta respuesta de Green API sobre Calls/SIP. Falta herramienta HTTP para que llamadas registren pedidos en nuestro backend; agent_md solo guía Architect, no modifica prompt operativo.
+
+
+- Claude 17:20: REGALO POR WHATSAPP A QUIEN RECIBE (probado de verdad: le llegó a Franco al [celular de Franco] con la imagen):
+  · Después de la entrega, Flora pregunta si le envía a quien recibe la imagen del ramo con su tarjeta (botones).
+    Entiende el número como lo escriban (con/sin 341, 0, 15, +54) y SIEMPRE confirma: "Lo envío al [celular de Franco], ¿es correcto?".
+  · Si no es sorpresa, se manda al confirmar el pedido (con la imagen apenas está lista); si es sorpresa, al marcar "entregado".
+  · Datos nuevos del pedido: `telefono_recibe`, `regalo_enviado` (fecha). 👉 Codex: mostrá "📲 Regalo enviado a <recibe>" en el pedido.

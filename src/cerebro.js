@@ -31,14 +31,19 @@ function fechaDe(t, ahora = new Date()) {
 export const FRASE_PERSONA = 'Te paso con una persona del equipo para que lo vea. Ya le dejé todo anotado, así no tenés que repetir nada. 🙌';
 
 // Número argentino → formato de WhatsApp (549 + área + número). null si no parece válido.
-export function numeroWhatsApp(texto) {
+export function numeroWhatsApp(texto, area = '341') {
   let n = String(texto || '').replace(/\D/g, '');
+  // Sin característica: "555 1234" o "15 555 1234" → se asume la de la ciudad (Rosario, 341).
+  if (/^15\d{7}$/.test(n)) n = n.slice(2);
+  if (/^\d{7}$/.test(n)) n = area + n;
   if (n.startsWith('00')) n = n.slice(2);
   if (n.startsWith('0')) n = n.slice(1);
   if (n.startsWith('54') && !n.startsWith('549') && n.length === 12) n = '549' + n.slice(2);
   if (!n.startsWith('54')) { if (n.length === 12) n = n.replace(/^(\d{2,4})15(\d{6,8})$/, '$1$2'); if (n.length === 10) n = '549' + n; }
   return /^549\d{10}$/.test(n) ? n : null;
 }
+
+export const numeroLindo = n => `+54 9 ${n.slice(3, 6)} ${n.slice(6, 9)}-${n.slice(9)}`;
 
 // ---------- 1. Entender ----------
 
@@ -97,10 +102,14 @@ function entenderConReglas(texto, estado, ficha) {
   const dicta = texto.match(/tarjeta (?:que )?(?:diga|dice|ponga|con el texto)[:\s]+["“]?(.{3,200}?)["”]?\s*$/i);
   if (dicta) r.tarjeta_propia = dicta[1].trim().replace(/^./, c => c.toUpperCase());
   if (estado.pregunto_whatsapp) {
-    const tel = texto.match(/(\+?\d[\d\s().-]{7,18}\d)/);
+    const tel = texto.match(/(\+?\d[\d\s().-]{5,18}\d)/);
     if (tel) r.telefono_recibe = tel[1];
     if (!tel && /^[^a-z0-9]*(no|no gracias|no hace falta|mejor no|sin aviso)/.test(t)) r.sin_whatsapp = true;
     if (!tel && /si, le paso|si le paso|le paso el numero/.test(t)) r.quiere_whatsapp = true;
+    if (/corregir|no es ese|esta mal|otro numero|me equivoque/.test(t)) r.corregir = true;
+  }
+  if (estado.wa_pendiente && !estado.wa_recibe) {
+    if (/^[^a-z0-9]*(si|es ese|correcto|ese mismo|exacto|dale|ok)/.test(t)) r.confirma = true;
   }
   if ((estado.tarjeta || estado.producto) && !dicta) { const f = fechaDe(t); if (f) r.fecha = f; }
   const notas = [/sorpresa/.test(t) && 'Es sorpresa', /timbre|portero/.test(t) && 'Tocar timbre/portero', /no (?:llames|llamar)/.test(t) && 'No llamar antes'].filter(Boolean);
@@ -358,7 +367,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     if (zona) { estado.zona = zona.id; estado.barrio = e.barrio || zona.nombre; }
     if (e.recibe) estado.recibe = e.recibe;
     if (e.ventana) estado.ventana = e.ventana;
-    if (e.telefono_recibe) { const n = numeroWhatsApp(e.telefono_recibe); if (n) { estado.wa_recibe = n; estado.wa_recibe_no = false; } else estado.wa_recibe_mal = true; }
+    if (e.telefono_recibe) { const n = numeroWhatsApp(e.telefono_recibe); if (n) { e.numero_nuevo = n !== estado.wa_pendiente; estado.wa_pendiente = n; estado.wa_recibe = null; estado.wa_recibe_no = false; } else estado.wa_recibe_mal = true; }
     if (e.sin_whatsapp === true && !estado.wa_recibe) estado.wa_recibe_no = true;
     if (e.notas && !(estado.notas || '').includes(e.notas)) estado.notas = [estado.notas, e.notas].filter(Boolean).join('. ');
     if (e.fecha) estado.fecha = e.fecha;
@@ -477,6 +486,24 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
       decir(`No pude leer bien ese número 🙏 Pasámelo con código de área, por ejemplo: 341 555-1234.`);
       return { respuestas: out, estado, botones: [{ id: 'wa_no', texto: 'No, gracias' }] };
     }
+    // Antes de enviar a un número, se confirma (la gente lo escribe de mil formas).
+    if (estado.wa_pendiente) {
+      if (e.corregir) {
+        estado.wa_pendiente = null;
+        decir(`Dale, pasame de nuevo el WhatsApp de ${estado.recibe} con código de área (ej: 341 555-1234).`);
+        return { respuestas: out, estado, botones: [{ id: 'wa_no', texto: 'No, gracias' }] };
+      }
+      if (e.confirma && !e.numero_nuevo) {
+        estado.wa_recibe = estado.wa_pendiente;
+        estado.wa_pendiente = null;
+      } else {
+        decir(`Lo envío al *${numeroLindo(estado.wa_pendiente)}*, ¿es correcto?`);
+        return { respuestas: out, estado, botones: [{ id: 'wa_ok', texto: '✅ Sí, es ese' }, { id: 'wa_corregir', texto: '✏️ Corregir' }] };
+      }
+    }
+  }
+  if (!estado.wa_recibe && !estado.wa_recibe_no) {
+    const sorpresa = /sorpresa/i.test(estado.notas || '');
     if (!estado.pregunto_whatsapp || e.quiere_whatsapp) {
       estado.pregunto_whatsapp = true;
       decir(e.quiere_whatsapp

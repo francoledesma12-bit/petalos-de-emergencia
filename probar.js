@@ -111,7 +111,7 @@ if (process.env.TALLER_CLAVE && process.env.REPARTO_CLAVE) {
   const t = como(taller.cookie), rp = como(reparto.cookie);
   const d = cliente();
   await d('hola'); await d('nos peleamos con Juli'); await d('1'); await d('rojos'); await d('2');
-  await d('Mendoza 1500, Echesortu, recibe Juli, antes de las 21'); await d('341 555-1234');
+  await d('Mendoza 1500, Echesortu, recibe Juli, antes de las 21'); await d('341 555-1234'); await d('✅ Sí, es ese');
   ver((await d('si')).includes('confirmado'), 'con el WhatsApp de quien recibe, el pedido se confirma');
   const cola = (await t('/api/taller')).j.pedidos;
   ver(Array.isArray(cola) && cola.every(p => !('total' in p) && p.datos.tarjeta !== undefined), 'el taller ve qué armar y la tarjeta, sin precios');
