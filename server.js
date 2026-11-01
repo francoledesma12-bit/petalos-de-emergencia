@@ -103,9 +103,15 @@ async function procesar(canal, chatId, nombre, texto) {
   });
 }
 
+// Si la línea es un celular personal, WA_PALABRA=flora hace que Flora solo atienda charlas que ya son suyas
+// o que arrancan nombrándola (el QR manda "Hola Flora"). El resto se ignora y no se guarda.
+const PALABRA = normalTexto(process.env.WA_PALABRA || '');
+function normalTexto(s) { return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); }
+const charlaExiste = chatId => Boolean(datos.db.prepare('SELECT 1 FROM charlas WHERE negocio=? AND canal=? AND chat_id=?').get(NEGOCIO, 'whatsapp', chatId));
+
 // Alguien contestó a mano desde el celular de la línea: Flora se calla en esa charla.
 function tomaPersona({ chatId, texto }) {
-  if (chatId === DUENO) return;
+  if (chatId === DUENO || !charlaExiste(chatId)) return;
   enCola(`whatsapp:${chatId}`, async () => {
     const c = datos.charla(NEGOCIO, 'whatsapp', chatId);
     datos.anotar(c.id, 'persona', texto);
@@ -122,6 +128,7 @@ const esperando = new Map();
 function recibirWhatsApp(m) {
   if (m.tipo === 'saliente') return tomaPersona(m);
   const { chatId, nombre, texto } = m;
+  if (PALABRA && !esperando.has(chatId) && !charlaExiste(chatId) && !normalTexto(texto).includes(PALABRA)) return;
   const e = esperando.get(chatId) || { textos: [] };
   clearTimeout(e.reloj);
   e.textos.push(texto);
