@@ -98,6 +98,13 @@ export function guardarEstado(c) {
     .run(JSON.stringify(c.estado), c.atiende, c.derivada_en ?? null, c.nombre ?? null, c.id);
 }
 
+// Para probar de cero: Flora olvida la charla (los pedidos ya hechos quedan).
+export function reiniciarCharla(c) {
+  db.prepare('DELETE FROM mensajes WHERE charla_id=?').run(c.id);
+  db.prepare("UPDATE charlas SET estado='{}', atiende='flora', derivada_en=NULL WHERE id=?").run(c.id);
+  resolverAvisos(c.id);
+}
+
 export function anotar(charlaId, quien, texto) {
   const en = ahora();
   db.prepare('INSERT INTO mensajes (charla_id, quien, texto, en) VALUES (?,?,?,?)').run(charlaId, quien, texto, en);

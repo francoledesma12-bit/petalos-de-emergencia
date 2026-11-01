@@ -90,7 +90,35 @@ async function procesar(canal, chatId, nombre, texto, responderConAudio = false)
       return { respuestas: [], botones: [] };
     }
 
-    const r = await atender(ficha, c.estado, historial, texto);
+    let r;
+    if (canal === 'web' && c.estado.pedido_web_pendiente) {
+      if (/cancel|persona|humano/i.test(texto)) {
+        delete c.estado.pedido_web_pendiente;
+        delete c.estado.telefono_web_por_confirmar;
+      } else if (c.estado.telefono_web_por_confirmar && /^(sí|si|confirmar|correcto|dale|ok)[.! ]*$/i.test(texto.trim())) {
+        c.estado.telefono_web = c.estado.telefono_web_por_confirmar;
+        r = { respuestas: [], estado: c.estado, pedido: c.estado.pedido_web_pendiente };
+        delete c.estado.pedido_web_pendiente;
+        delete c.estado.telefono_web_por_confirmar;
+      } else {
+        const numero = texto.trim().replace(/[\s()+.-]/g, '');
+        const valido = /^[1-9]\d{9,14}$/.test(numero);
+        c.estado.telefono_web_por_confirmar = valido ? numero : null;
+        datos.guardarEstado(c);
+        const respuesta = valido ? `¿Confirmás el teléfono +${numero} como contacto de este pedido? Respondé sí o escribí el número corregido.` : 'Pasame tu teléfono con código de país para poder contactarte por la entrega (por ejemplo, +54 9 y tu número).';
+        await decir(c, respuesta);
+        return { respuestas: [respuesta], botones: valido ? [{id:'si',texto:'Sí'}] : [], imagenes: [] };
+      }
+    }
+    r ||= await atender(ficha, c.estado, historial, texto);
+    if (canal === 'web' && r.pedido && !r.estado.telefono_web) {
+      c.estado = r.estado;
+      c.estado.pedido_web_pendiente = r.pedido;
+      datos.guardarEstado(c);
+      const respuesta = 'Ya tengo tu pedido. Para confirmarlo acá en la web, pasame tu teléfono con código de país. Lo usamos para contactarte por la entrega.';
+      await decir(c, respuesta);
+      return { respuestas: [respuesta], botones: [], imagenes: [] };
+    }
     c.estado = r.estado;
     const dichas = [...r.respuestas];
 
@@ -133,7 +161,7 @@ async function procesar(canal, chatId, nombre, texto, responderConAudio = false)
       r.pedido.datos.estilo = c.estado.estilo || null;
       r.pedido.datos.rescatada = Boolean(c.estado.seguimiento_enviado);
       r.pedido.datos.cliente = r.pedido.datos.cliente || c.nombre || null;
-      r.pedido.datos.telefono = c.canal === 'whatsapp' ? c.chat_id.replace('@c.us', '') : null;
+      r.pedido.datos.telefono = c.canal === 'whatsapp' ? c.chat_id.replace('@c.us', '') : c.estado.telefono_web || null;
       r.pedido.datos.canal = c.canal;
       const p = datos.crearPedido(NEGOCIO, c.id, r.pedido.datos, r.pedido.total, r.pedido.hora_limite);
       c.estado.pedido_id = p.id;
@@ -319,6 +347,12 @@ function recibirWhatsApp(m) {
     return;
   }
   const { chatId, nombre, texto } = m;
+  if (/^#?s*(reiniciar|empezar de cero)[.!s]*$/i.test(normalTexto(texto))) {
+    clearTimeout(esperando.get(chatId)?.reloj); esperando.delete(chatId);
+    datos.reiniciarCharla(datos.charla(NEGOCIO, 'whatsapp', chatId, nombre));
+    avisar('tablero');
+    return enviar(chatId, 'Listo, empezamos de cero 🌷 Escribime "Hola" como si fuera la primera vez.');
+  }
   if (PALABRA && !esperando.has(chatId) && !charlaExiste(chatId) && !normalTexto(texto).includes(PALABRA)) return;
   const e = esperando.get(chatId) || { textos: [], responderConAudio: false };
   clearTimeout(e.reloj);
