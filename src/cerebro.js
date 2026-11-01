@@ -30,6 +30,16 @@ function fechaDe(t, ahora = new Date()) {
 
 export const FRASE_PERSONA = 'Te paso con una persona del equipo para que lo vea. Ya le dejé todo anotado, así no tenés que repetir nada. 🙌';
 
+// Número argentino → formato de WhatsApp (549 + área + número). null si no parece válido.
+export function numeroWhatsApp(texto) {
+  let n = String(texto || '').replace(/\D/g, '');
+  if (n.startsWith('00')) n = n.slice(2);
+  if (n.startsWith('0')) n = n.slice(1);
+  if (n.startsWith('54') && !n.startsWith('549') && n.length === 12) n = '549' + n.slice(2);
+  if (!n.startsWith('54')) { if (n.length === 12) n = n.replace(/^(\d{2,4})15(\d{6,8})$/, '$1$2'); if (n.length === 10) n = '549' + n; }
+  return /^549\d{10}$/.test(n) ? n : null;
+}
+
 // ---------- 1. Entender ----------
 
 // "2", "el 2", "dale la 2", "el segundo", "la del medio" → 2. Solo en mensajes cortos, para no confundir direcciones.
@@ -86,6 +96,12 @@ function entenderConReglas(texto, estado, ficha) {
   // La tarjeta se puede dictar o cambiar en cualquier momento: "que la tarjeta diga …"
   const dicta = texto.match(/tarjeta (?:que )?(?:diga|dice|ponga|con el texto)[:\s]+["“]?(.{3,200}?)["”]?\s*$/i);
   if (dicta) r.tarjeta_propia = dicta[1].trim().replace(/^./, c => c.toUpperCase());
+  if (estado.pregunto_whatsapp) {
+    const tel = texto.match(/(\+?\d[\d\s().-]{7,18}\d)/);
+    if (tel) r.telefono_recibe = tel[1];
+    if (!tel && /^[^a-z0-9]*(no|no gracias|no hace falta|mejor no|sin aviso)/.test(t)) r.sin_whatsapp = true;
+    if (!tel && /si, le paso|si le paso|le paso el numero/.test(t)) r.quiere_whatsapp = true;
+  }
   if ((estado.tarjeta || estado.producto) && !dicta) { const f = fechaDe(t); if (f) r.fecha = f; }
   const notas = [/sorpresa/.test(t) && 'Es sorpresa', /timbre|portero/.test(t) && 'Tocar timbre/portero', /no (?:llames|llamar)/.test(t) && 'No llamar antes'].filter(Boolean);
   if (notas.length) r.notas = notas.join('. ');
@@ -111,7 +127,8 @@ function promptEntender(ficha, estado, historial, texto) {
     `{"pide_persona":bool,"reclamo":"true si se queja de un pedido (no llegó, llegó mal, demora)","situacion":str|null,"gravedad":1|2|3|null,"para":"quién recibe y relación, ej: 'Caro, mi novia'"|null,`,
     `"contexto":"en 1 línea qué pasó"|null,"eleccion":id de producto|null,"extras":[ids],"eleccion_tarjeta":1|2|3|null,`,
     `"sin_tarjeta":bool,"tarjeta_propia":"texto EXACTO si el cliente dicta o cambia lo que dice la tarjeta (aunque ya haya elegido una)"|null,"direccion":"calle y número"|null,`,
-    `"barrio":str|null,"hora_limite":"HH:MM 24h; si da un rango (entre las 12 y las 15) poné el final del rango"|null,"ventana":"el rango tal cual, ej: entre las 12 y las 15"|null,"fecha":"AAAA-MM-DD del día de ENTREGA si lo dice (mañana, el sábado, 15/11); null si es hoy o no lo dice. No confundir con fechas que aparecen en el texto de la tarjeta"|null,"estilo":"colores o flores que pide para el ramo, o 'sorprendeme' si deja que elijamos"|null,"notas":"indicaciones para la entrega o el armado que dio el cliente (es sorpresa, tocar timbre, piso, alergias, colores)"|null,"recibe":"nombre de quien recibe"|null,"nombre_cliente":str|null,`,
+    `"barrio":str|null,"hora_limite":"HH:MM 24h; si da un rango (entre las 12 y las 15) poné el final del rango"|null,"ventana":"el rango tal cual, ej: entre las 12 y las 15"|null,"telefono_recibe":"número de WhatsApp de la persona que RECIBE el regalo si lo da"|null,"sin_whatsapp":"true si no quiere que le avisemos por WhatsApp a quien recibe",
+    "fecha":"AAAA-MM-DD del día de ENTREGA si lo dice (mañana, el sábado, 15/11); null si es hoy o no lo dice. No confundir con fechas que aparecen en el texto de la tarjeta"|null,"estilo":"colores o flores que pide para el ramo, o 'sorprendeme' si deja que elijamos"|null,"notas":"indicaciones para la entrega o el armado que dio el cliente (es sorpresa, tocar timbre, piso, alergias, colores)"|null,"recibe":"nombre de quien recibe"|null,"nombre_cliente":str|null,`,
     `"confirma":bool,"cancela":bool,"catalogo":"true si pide ver el catálogo, fotos o todo lo que hay","pregunta":"si pregunta otra cosa (horario, pago, envío), cuál"|null,`,
     `"frase":"UNA frase corta y humana para arrancar la respuesta, en español rioplatense, con humor si es una macana y seria si es un duelo. Sin precios, sin números, sin prometer nada"}`,
   ].join('\n');
@@ -341,6 +358,8 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     if (zona) { estado.zona = zona.id; estado.barrio = e.barrio || zona.nombre; }
     if (e.recibe) estado.recibe = e.recibe;
     if (e.ventana) estado.ventana = e.ventana;
+    if (e.telefono_recibe) { const n = numeroWhatsApp(e.telefono_recibe); if (n) { estado.wa_recibe = n; estado.wa_recibe_no = false; } else estado.wa_recibe_mal = true; }
+    if (e.sin_whatsapp === true && !estado.wa_recibe) estado.wa_recibe_no = true;
     if (e.notas && !(estado.notas || '').includes(e.notas)) estado.notas = [estado.notas, e.notas].filter(Boolean).join('. ');
     if (e.fecha) estado.fecha = e.fecha;
     if (e.hora_limite) estado.hora_hhmm = e.hora_limite;
@@ -450,6 +469,24 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
   }
   estado.repreguntas = 0;
 
+  // Paso 4b: ¿le avisamos a quien recibe por WhatsApp con la imagen del ramo y su tarjeta?
+  if (!estado.wa_recibe && !estado.wa_recibe_no) {
+    const sorpresa = /sorpresa/i.test(estado.notas || '');
+    if (estado.wa_recibe_mal) {
+      estado.wa_recibe_mal = false;
+      decir(`No pude leer bien ese número 🙏 Pasámelo con código de área, por ejemplo: 341 555-1234.`);
+      return { respuestas: out, estado, botones: [{ id: 'wa_no', texto: 'No, gracias' }] };
+    }
+    if (!estado.pregunto_whatsapp || e.quiere_whatsapp) {
+      estado.pregunto_whatsapp = true;
+      decir(e.quiere_whatsapp
+        ? `Perfecto. Pasame el WhatsApp de ${estado.recibe} con código de área (ej: 341 555-1234).`
+        : `¿Querés que le enviemos a ${estado.recibe} por WhatsApp la imagen del ramo con su tarjeta? 💐${sorpresa ? ' Como es sorpresa, se la mandamos recién cuando reciba las flores.' : ''}`);
+      return { respuestas: out, estado, botones: e.quiere_whatsapp ? [{ id: 'wa_no', texto: 'No, gracias' }] : [{ id: 'wa_si', texto: '📲 Sí, le paso el número' }, { id: 'wa_no', texto: 'No, gracias' }] };
+    }
+    estado.wa_recibe_no = true; // no contestó con un número: seguimos sin aviso
+  }
+
   // Paso 5: confirmar.
   const { producto, extras, zona, total } = calcular(ficha, estado);
   if (!estado.mostro_resumen || !e.confirma) {
@@ -465,6 +502,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
       `Llega ${cuando(estado.hora_limite)}${estado.ventana ? ` (está ${estado.ventana})` : ""}`,
       `Tarjeta: "${estado.tarjeta}"`,
       ...(estado.notas ? [`Nota: ${estado.notas}`] : []),
+      ...(estado.wa_recibe ? [`Le enviamos la imagen por WhatsApp a ${estado.recibe}: +${estado.wa_recibe}`] : []),
       '',
       '¿Lo confirmo?',
     ].join('\n'));
@@ -484,6 +522,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     recibe: estado.recibe,
     ventana: estado.ventana || null,
     notas: estado.notas || null,
+    telefono_recibe: estado.wa_recibe || null,
     cliente: estado.nombre_cliente || null,
     tono: ficha.situaciones[estado.situacion].tono,
   };

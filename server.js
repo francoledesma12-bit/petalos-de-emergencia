@@ -121,6 +121,10 @@ async function procesar(canal, chatId, nombre, texto) {
       c.estado.pedido_id = p.id;
       ubicar(p.datos.direccion, ficha.ciudad).then(punto => { if (punto) { datos.sumarDatos(p.id, punto); avisar('tablero'); } });
       dichas.push(textoPedidoCreado(ficha, p.id, p.total, p.datos.tono));
+      if (p.datos.telefono_recibe && !esSorpresa(p)) {
+        regaloAlDestinatario(p.id);
+        setTimeout(() => regaloAlDestinatario(p.id, { aunSinImagen: true }), 120000); // si la imagen no llega, va igual
+      }
       const d = p.datos;
       avisarDueno([
         `🌹 *Pedido #${p.id}* · ${quien(c)}`,
@@ -177,6 +181,27 @@ function tomaPersona({ chatId, texto }) {
 // WhatsApp: junta los mensajes que llegan seguidos (la gente escribe en partes).
 const esperando = new Map();
 // Con la API del evento: se dibuja el ramo (colores + tarjeta) y se le manda al cliente antes de confirmar.
+// Regalo por WhatsApp a quien recibe: la imagen del ramo con su tarjeta, firmada por la florería.
+// Si es sorpresa se manda al entregar; si no, apenas está confirmado el pedido (con la imagen si ya está lista).
+const esSorpresa = p => /sorpresa/i.test(p.datos.notas || '');
+async function regaloAlDestinatario(pedidoId, { aunSinImagen = false } = {}) {
+  const p = datos.pedido(pedidoId);
+  if (!p || !p.datos.telefono_recibe || p.datos.regalo_enviado || p.estado === 'cancelado') return;
+  if (!p.datos.imagen && !aunSinImagen) return;
+  datos.sumarDatos(p.id, { regalo_enviado: Date.now() });
+  const chat = chatDe(p.datos.telefono_recibe);
+  const tarjeta = p.datos.tarjeta && p.datos.tarjeta !== '(sin tarjeta)' ? `
+
+💌 "${p.datos.tarjeta}"` : '';
+  const pie = p.estado === 'entregado' ? 'Tus flores ya llegaron 🌷' : `Tus flores llegan ${hora(p.hora_limite)}.`;
+  const texto = `💐 ¡Hola ${p.datos.recibe}! Alguien especial te envía un regalo de ${ficha.nombre}.${tarjeta}
+
+${pie}`;
+  const ok = p.datos.imagen && SITIO ? await imagen(chat, SITIO + p.datos.imagen, texto) : await enviar(chat, texto);
+  if (!ok) datos.sumarDatos(p.id, { regalo_enviado: null });
+  avisar('tablero');
+}
+
 const dibujando = new Set(); // charlas con una vista previa en curso
 function dibujarPrevia(charlaId) {
   if (dibujando.has(charlaId)) return;
@@ -191,7 +216,11 @@ function dibujarPrevia(charlaId) {
       const url = `/fotos/${archivo}`;
       c.estado.imagen = url;
       datos.guardarEstado(c);
-      if (c.estado.pedido_id) datos.sumarDatos(c.estado.pedido_id, { imagen: url });
+      if (c.estado.pedido_id) {
+        datos.sumarDatos(c.estado.pedido_id, { imagen: url });
+        const p = datos.pedido(c.estado.pedido_id);
+        if (p && !esSorpresa(p)) regaloAlDestinatario(p.id);
+      }
       if (c.canal === 'whatsapp' && SITIO) await imagen(c.chat_id, SITIO + url, '💐 Te comparto una vista previa de tu arreglo con la tarjeta. El ramo se arma a mano, por eso puede variar levemente.');
       datos.anotar(c.id, 'aviso', `💐 Vista previa de tu arreglo:
 ${url}`);
@@ -458,6 +487,7 @@ const servidor = http.createServer(async (req, res) => {
         const p = datos.cambiarPedido(actual.id, estado);
         const texto = textoCambioEstado(ficha, p);
         if (texto && estado !== actual.estado) await decir(datos.charlaPorId(p.charla_id), texto, 'aviso');
+        if (estado === 'entregado' && esSorpresa(p)) regaloAlDestinatario(p.id, { aunSinImagen: true });
         avisar('tablero');
         return json(res, 200, { ok: true, pedido: p });
       }
