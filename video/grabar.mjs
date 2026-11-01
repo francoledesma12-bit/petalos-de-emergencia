@@ -4,7 +4,7 @@ import { resolve, extname, join } from 'node:path';
 import { chromium } from 'playwright-core';
 
 const root = resolve('dist');
-const types = { '.html':'text/html', '.css':'text/css', '.js':'text/javascript', '.png':'image/png' };
+const types = { '.html':'text/html', '.css':'text/css', '.js':'text/javascript', '.png':'image/png', '.jpg':'image/jpeg' };
 const server = http.createServer(async (req,res) => {
   try { const path = resolve(root, '.' + (req.url === '/' ? '/index.html' : new URL(req.url,'http://local').pathname)); if (!path.startsWith(root)) {res.writeHead(403).end();return;} const body=await readFile(path);res.writeHead(200,{'Content-Type':types[extname(path)]||'application/octet-stream'}).end(body); }
   catch {res.writeHead(404).end();}
