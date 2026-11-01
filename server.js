@@ -99,6 +99,9 @@ async function procesar(canal, chatId, nombre, texto) {
     }
     if (r.pedido) {
       r.pedido.datos.rescatada = Boolean(c.estado.seguimiento_enviado);
+      r.pedido.datos.cliente = r.pedido.datos.cliente || c.nombre || null;
+      r.pedido.datos.telefono = c.canal === 'whatsapp' ? c.chat_id.replace('@c.us', '') : null;
+      r.pedido.datos.canal = c.canal;
       const p = datos.crearPedido(NEGOCIO, c.id, r.pedido.datos, r.pedido.total, r.pedido.hora_limite);
       c.estado.pedido_id = p.id;
       ubicar(p.datos.direccion, ficha.ciudad).then(punto => { if (punto) { datos.sumarDatos(p.id, punto); avisar('tablero'); } });
@@ -332,13 +335,13 @@ const servidor = http.createServer(async (req, res) => {
       if (req.method === 'GET' && ruta === '/api/taller') {
         const pedidos = datos.pedidosEn(NEGOCIO, ['nuevo', 'preparando'])
           .map(({ id, estado, hora_limite, datos: d }) => ({ id, estado, hora_limite,
-            datos: { producto: d.producto, extras: d.extras, tarjeta: d.tarjeta, tono: d.tono, recibe: d.recibe } }));
+            datos: { producto: d.producto, extras: d.extras, tarjeta: d.tarjeta, tono: d.tono, recibe: d.recibe, notas: d.notas ?? null, situacion: d.situacion } }));
         return json(res, 200, { pedidos });
       }
       if (req.method === 'GET' && ruta === '/api/reparto') {
         const pedidos = datos.pedidosEn(NEGOCIO, ['listo', 'en_camino'])
           .map(({ id, estado, hora_limite, datos: d }) => ({ id, estado, hora_limite,
-            datos: { recibe: d.recibe, direccion: d.direccion, zona: d.zona, producto: d.producto, lat: d.lat ?? null, lng: d.lng ?? null } }));
+            datos: { recibe: d.recibe, direccion: d.direccion, zona: d.zona, producto: d.producto, notas: d.notas ?? null, ventana: d.ventana ?? null, telefono: d.telefono ?? null, lat: d.lat ?? null, lng: d.lng ?? null } }));
         const ruta_ = await rutaDeReparto(ficha, pedidos);
         pedidos.sort((a, b) => ruta_.orden.indexOf(a.id) - ruta_.orden.indexOf(b.id));
         return json(res, 200, { ruta: ruta_, pedidos, local: { lat: ficha.local_lat, lng: ficha.local_lng, direccion: ficha.direccion_local }, repartidor: posicionRepartidor });

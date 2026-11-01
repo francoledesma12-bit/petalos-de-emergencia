@@ -202,3 +202,12 @@ El servidor ya está listo para mandarlas por WhatsApp y al chat web. Solo falta
   Si un archivo no existe, se saltea solo (no se rompe nada). En el chat web: `POST /api/chat` ahora trae
   `imagenes: [{url, texto}]` → mostralas antes del último mensaje.
   Avisame acá cuando estén y publico.
+
+- Claude: CHARLA ACEITADA (Franco probó por WhatsApp y Flora repitió 4 veces la misma pregunta → corregido):
+  entiende "Recibe Julieta", rangos "entre las 12 y las 15", cambiar la tarjeta en cualquier momento, nunca repite la misma
+  pregunta (la 2.ª vez da un ejemplo, la 3.ª pasa a una persona), y solo habla del local si el cliente pregunta.
+  DATOS NUEVOS en cada pedido (`datos`) para mostrar en las pantallas:
+    · `notas` (ej. "Es sorpresa", "Tocar timbre") → mostrarlas BIEN visibles en taller, reparto y dueño.
+    · `ventana` (ej. "entre las 12 y las 15") → en reparto, junto a la hora límite.
+    · `cliente` (nombre), `telefono` (si vino por WhatsApp), `canal` ("whatsapp" | "web"), `para`, `contexto` (qué pasó, 1 línea).
+    · `/api/taller` suma `notas` y `situacion`; `/api/reparto` suma `notas`, `ventana`, `telefono` (botón "Llamar").
