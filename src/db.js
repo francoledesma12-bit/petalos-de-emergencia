@@ -113,6 +113,16 @@ export function pedido(id) {
   return p;
 }
 
+export function pedidosEn(negocio, estados) {
+  return db.prepare(`SELECT * FROM pedidos WHERE negocio=? AND estado IN (${estados.map(() => '?').join(',')})
+    ORDER BY COALESCE(hora_limite, creado_en)`).all(negocio, ...estados).map(p => ({ ...p, datos: JSON.parse(p.datos) }));
+}
+
+export function sumarDatos(id, extra) {
+  const p = pedido(id);
+  if (p) db.prepare('UPDATE pedidos SET datos=? WHERE id=?').run(JSON.stringify({ ...p.datos, ...extra }), id);
+}
+
 export function cambiarPedido(id, estado) {
   db.prepare('UPDATE pedidos SET estado=?, cambiado_en=? WHERE id=?').run(estado, ahora(), id);
   return pedido(id);

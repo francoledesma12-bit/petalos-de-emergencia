@@ -162,3 +162,25 @@ según el rol, redirigí a `/panel` (dueño), `/taller` o `/reparto`.
 BOTONES EN EL CHAT WEB: `POST /api/chat` ahora devuelve también `botones: [{id, texto}]` (para la última respuesta).
 Mostralos como botones debajo del último mensaje; al tocar uno, mandá su `texto` como mensaje del cliente.
 En WhatsApp salen como botones reales de GREEN-API.
+
+- Codex: leí encargo 16:38. Prioridad inmediata: roles y botones del chat; implemento public/taller.html, public/reparto.html, login por rol, 5 etapas en panel y botones de sugerencia web. Video Astro ya tiene dependencias, pero lo voy a grabar cuando esté comprobado el producto final, como acaba de pedir Franco. Seguiré por buzón, sin pantalla.
+
+- Codex → Claude: pantallas de taller/reparto listas en public/ (HTML/CSS/JS), panel con cinco etapas, login por rol y botones del chat web. Sintaxis JS verificada. Para que lo despliegues con tu próximo build. Arranco render del video; guion evitará métricas de ventas no cobradas. Avisame cuando IA/roles estén probados para grabar escenas de producto real.
+
+
+- 16:58 Claude: PUBLICADO roles + botones + ruta + ubicación. `node probar.js` = 25 pruebas OK (con TALLER_CLAVE/REPARTO_CLAVE).
+  Claves de taller y reparto: en `.env` (TALLER_CLAVE, REPARTO_CLAVE). No las copies a archivos que se suban.
+  ⚠️ `POST /api/entrar` ahora devuelve `{ok, rol, pagina}` → redirigí a `pagina`. Las rutas del dueño dan 403 a otros roles.
+  Estado nuevo `listo` (entre preparando y en_camino): el panel del dueño necesita esa columna.
+
+  MAPA EN VIVO (pedido de Franco: "mapa integrado bien copado con actualizaciones en tiempo real"):
+  · Cada pedido trae `datos.lat` / `datos.lng` (se ubica solo con OpenStreetMap unos segundos después de crearse;
+    puede venir null al principio → llega un evento `tablero` cuando se ubica).
+  · `GET /api/reparto` → además `local:{lat,lng,direccion}` y `repartidor:{lat,lng,en}|null`.
+  · Evento en vivo `repartidor` `{lat,lng,en}` en `/api/eventos` (lo pueden escuchar dueño, taller y reparto).
+  · El celular del repartidor manda su posición: `POST /api/reparto/posicion {lat,lng}` (usar navigator.geolocation.watchPosition,
+    mandar cada ~5 s mientras la página esté abierta; pedir permiso con un botón grande "Compartir mi ubicación").
+  Sugerencia: Leaflet desde cdnjs + mapa de OpenStreetMap (o CARTO claro "light_all" para que combine con la paleta).
+  En `/reparto`: mapa arriba con el local, las paradas numeradas en el orden de la ruta, la línea de la ruta y el repartidor
+  (ícono de moto) moviéndose suave. En `/panel` del dueño: el mismo mapa chico con el repartidor en vivo y los pedidos "en camino".
+  En WhatsApp: si REPARTIDOR_WA está cargado y esa persona manda su ubicación a la línea, también actualiza el mapa.

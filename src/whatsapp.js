@@ -7,20 +7,52 @@ const TOKEN = process.env.WA_TOKEN || '';
 export const waActivo = () => Boolean(INSTANCIA && TOKEN);
 const base = () => `${API}/waInstance${INSTANCIA}`;
 
-export async function enviar(chatId, texto) {
-  if (!waActivo()) return false;
+async function llamar(metodo, cuerpo) {
   try {
-    const r = await fetch(`${base()}/sendMessage/${TOKEN}`, {
+    const r = await fetch(`${base()}/${metodo}/${TOKEN}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chatId, message: texto }),
+      body: JSON.stringify(cuerpo),
     });
-    if (!r.ok) console.error('[wa] no se pudo enviar', r.status, (await r.text()).slice(0, 200));
+    if (!r.ok) console.error(`[wa] ${metodo} falló`, r.status, (await r.text()).slice(0, 200));
     return r.ok;
   } catch (e) {
-    console.error('[wa] error al enviar:', e.message);
+    console.error(`[wa] ${metodo} error:`, e.message);
     return false;
   }
+}
+
+// Texto simple, o con hasta 3 botones de respuesta. Si los botones fallan, va como texto.
+export async function enviar(chatId, texto, botones = []) {
+  if (!waActivo()) return false;
+  if (botones.length) {
+    const ok = await llamar('sendInteractiveButtonsReply', {
+      chatId, body: texto, footer: 'Pétalos de Emergencia',
+      buttons: botones.slice(0, 3).map(b => ({ buttonId: b.id, buttonText: b.texto.slice(0, 25) })),
+    });
+    if (ok) return true;
+  }
+  return llamar('sendMessage', { chatId, message: texto });
+}
+
+// Botones de acción (abrir un enlace, llamar). Se usan en los avisos al dueño.
+export async function enviarConAcciones(chatId, texto, acciones) {
+  if (!waActivo()) return false;
+  const ok = await llamar('sendInteractiveButtons', {
+    chatId, body: texto,
+    buttons: acciones.slice(0, 3).map((a, i) => ({ buttonId: String(i + 1), buttonText: a.texto.slice(0, 25), type: a.tipo,
+      ...(a.tipo === 'url' ? { url: a.valor } : a.tipo === 'call' ? { phoneNumber: a.valor } : { copyCode: a.valor }) })),
+  });
+  return ok || llamar('sendMessage', { chatId, message: texto });
+}
+
+// "Escribiendo…" mientras Flora piensa.
+export function escribiendo(chatId, ms = 3000) {
+  if (waActivo()) llamar('sendTyping', { chatId, typingTime: Math.min(20000, Math.max(1000, ms)) });
+}
+
+export function ubicacion(chatId, { nombre, direccion, lat, lng }) {
+  if (waActivo()) return llamar('sendLocation', { chatId, nameLocation: nombre, address: direccion, latitude: lat, longitude: lng });
 }
 
 export async function estado() {
@@ -41,6 +73,8 @@ function textoDe(m = {}) {
     case 'quotedMessage': return m.extendedTextMessageData?.text || '';
     case 'editedMessage': return m.editedMessageData?.textMessage || '';
     case 'buttonsResponseMessage': return m.buttonsResponseMessage?.selectedButtonText || '';
+    case 'templateButtonsReplyMessage': return m.templateButtonReplyMessage?.selectedDisplayText || m.templateButtonsReplyMessage?.selectedDisplayText || '';
+    case 'interactiveButtonsResponse': return m.interactiveButtonsResponse?.selectedDisplayText || '';
     case 'listResponseMessage': return m.listResponseMessage?.title || '';
     case 'imageMessage': return m.fileMessageData?.caption || '[foto]';
     case 'audioMessage': return '[audio]';
@@ -56,6 +90,8 @@ export function leerAviso(aviso) {
   if (!tipo) return null;
   const chatId = aviso.senderData?.chatId || '';
   if (!chatId.endsWith('@c.us')) return null; // grupos y difusiones no se atienden
+  const loc = aviso.messageData?.locationMessageData;
+  if (tipo === 'entrante' && loc && Number.isFinite(loc.latitude)) return { tipo: 'ubicacion', chatId, lat: loc.latitude, lng: loc.longitude };
   const texto = textoDe(aviso.messageData).trim();
   if (!texto) return null;
   return { tipo, chatId, nombre: tipo === 'entrante' ? (aviso.senderData?.senderName || aviso.senderData?.chatName || '') : '', texto };

@@ -8,7 +8,9 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as datos from './src/db.js';
 import { atender, resumenParaPersona, textoPedidoCreado, textoCambioEstado } from './src/cerebro.js';
-import { enviar, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
+import { enviar, enviarConAcciones, escribiendo, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
+import { rutaDeReparto } from './src/reparto.js';
+import { ubicar } from './src/mapa.js';
 import { iaActiva } from './src/ia.js';
 
 const PUERTO = Number(process.env.PORT || 3000);
@@ -19,6 +21,8 @@ const CLAVE_PANEL = process.env.PANEL_CLAVE || 'flores';
 const TOKEN_AVISO = process.env.WA_AVISO_TOKEN || '';
 const WA_NUMERO = process.env.WA_NUMERO || null;
 const PUBLICO = fileURLToPath(new URL('./public/', import.meta.url));
+
+let posicionRepartidor = null; // { lat, lng, en } — la manda el celular del repartidor
 
 // ---------- Tiempo real (panel) ----------
 const oyentes = new Set();
@@ -37,16 +41,23 @@ function enCola(clave, tarea) {
   return sigue;
 }
 
-async function decir(c, texto, quien = 'flora') {
+async function decir(c, texto, quien = 'flora', botones = []) {
   datos.anotar(c.id, quien, texto);
   avisar('mensaje', { charla_id: c.id, quien, texto });
-  if (c.canal === 'whatsapp') await enviar(c.chat_id, texto);
+  if (c.canal === 'whatsapp') await enviar(c.chat_id, texto, botones);
 }
 
 // Avisos al celular del dueño (como el aviso al vendedor de Rosario Exclusivos).
 const DUENO = chatDe(process.env.DUENO_WA);
 const PANEL_URL = process.env.PANEL_URL || '';
-const avisarDueno = texto => (DUENO ? enviar(DUENO, texto) : Promise.resolve(false));
+// Cada aviso al dueño lleva botones para abrir el panel y llamar al cliente.
+function avisarDueno(texto, c) {
+  if (!DUENO) return Promise.resolve(false);
+  const acciones = [];
+  if (PANEL_URL) acciones.push({ tipo: 'url', texto: 'Abrir el panel', valor: PANEL_URL });
+  if (c?.canal === 'whatsapp') acciones.push({ tipo: 'call', texto: 'Llamar al cliente', valor: c.chat_id.replace('@c.us', '') });
+  return acciones.length ? enviarConAcciones(DUENO, texto, acciones) : enviar(DUENO, texto);
+}
 const quien = c => `${c.nombre || 'Cliente'}${c.canal === 'whatsapp' ? ' (+' + c.chat_id.replace('@c.us', '') + ')' : ' (chat web)'}`;
 const hora = ms => new Date(ms).toLocaleString('es-AR', { weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
 
@@ -56,6 +67,7 @@ async function procesar(canal, chatId, nombre, texto) {
     const c = datos.charla(NEGOCIO, canal, chatId, nombre);
     const historial = datos.historial(c.id);
     datos.anotar(c.id, 'cliente', texto);
+    if (canal === 'whatsapp' && c.atiende === 'flora') escribiendo(chatId, 2500);
     avisar('mensaje', { charla_id: c.id, quien: 'cliente', texto });
 
     // La atiende una persona: Flora no se mete. Si el cliente agrega algo, le llega al dueño.
@@ -63,10 +75,10 @@ async function procesar(canal, chatId, nombre, texto) {
       const relleno = /^(ok|oka|dale|gracias|graciass*|genial|bueno|listo|joya|👍|🙏|❤️)[.! ]*$/i.test(texto.trim());
       if (!relleno) {
         datos.agregarAlAviso(c.id, `Agregó (${hora(Date.now())}): "${texto}"`);
-        await avisarDueno(`🔄 *ACTUALIZACIÓN caso #${c.id}* · ${quien(c)}\n"${texto}"`);
+        await avisarDueno(`🔄 *ACTUALIZACIÓN caso #${c.id}* · ${quien(c)}\n"${texto}"`, c);
       }
       avisar('tablero');
-      return [];
+      return { respuestas: [], botones: [] };
     }
 
     const r = await atender(ficha, c.estado, historial, texto);
@@ -82,12 +94,13 @@ async function procesar(canal, chatId, nombre, texto) {
         `🚨 *Caso #${c.id}* · ${quien(c)}`, resumen, '',
         `Contestale desde el WhatsApp de la florería${PANEL_URL ? ' o desde el panel: ' + PANEL_URL : ''}.`,
         `Si nadie le contesta en ${ficha.minutos_para_volver_si_nadie_contesta} minutos, Flora vuelve a atenderlo.`,
-      ].join('\n'));
+      ].join('\n'), c);
     }
     if (r.pedido) {
       r.pedido.datos.rescatada = Boolean(c.estado.seguimiento_enviado);
       const p = datos.crearPedido(NEGOCIO, c.id, r.pedido.datos, r.pedido.total, r.pedido.hora_limite);
       c.estado.pedido_id = p.id;
+      ubicar(p.datos.direccion, ficha.ciudad).then(punto => { if (punto) { datos.sumarDatos(p.id, punto); avisar('tablero'); } });
       dichas.push(textoPedidoCreado(ficha, p.id, p.total, p.datos.tono));
       const d = p.datos;
       avisarDueno([
@@ -96,12 +109,13 @@ async function procesar(canal, chatId, nombre, texto) {
         `Para ${d.recibe} · ${d.direccion} (${d.zona})`,
         `Llega antes de: ${hora(p.hora_limite)}`,
         `Tarjeta: "${d.tarjeta}"`,
-      ].join('\n'));
+      ].join('\n'), c);
     }
     datos.guardarEstado(c);
-    for (const t of dichas) await decir(c, t);
+    const botones = r.pedido ? [] : (r.botones || []);
+    for (const [i, t] of dichas.entries()) await decir(c, t, 'flora', i === dichas.length - 1 ? botones : []);
     if (r.persona || r.pedido) avisar('tablero');
-    return dichas;
+    return { respuestas: dichas, botones };
   });
 }
 
@@ -129,6 +143,11 @@ function tomaPersona({ chatId, texto }) {
 const esperando = new Map();
 function recibirWhatsApp(m) {
   if (m.tipo === 'saliente') return tomaPersona(m);
+  if (m.tipo === 'ubicacion') {
+    // El repartidor también puede mandar su ubicación por WhatsApp a la línea.
+    if (m.chatId === chatDe(process.env.REPARTIDOR_WA)) { posicionRepartidor = { lat: m.lat, lng: m.lng, en: Date.now() }; avisar('repartidor', posicionRepartidor); }
+    return;
+  }
   const { chatId, nombre, texto } = m;
   if (PALABRA && !esperando.has(chatId) && !charlaExiste(chatId) && !normalTexto(texto).includes(PALABRA)) return;
   const e = esperando.get(chatId) || { textos: [] };
@@ -155,7 +174,7 @@ setInterval(async () => {
     datos.guardarEstado(c);
     datos.resolverAvisos(c.id);
     await decir(c, 'Perdón la espera 🙏 El equipo está a mil, así que sigo yo para que no pierdas tiempo. ¿En qué te ayudo?', 'aviso');
-    await avisarDueno(`⏱️ Nadie contestó el *caso #${c.id}* (${quien(c)}) en ${ficha.minutos_para_volver_si_nadie_contesta} minutos: Flora lo retomó para que no se vaya.`);
+    await avisarDueno(`⏱️ Nadie contestó el *caso #${c.id}* (${quien(c)}) en ${ficha.minutos_para_volver_si_nadie_contesta} minutos: Flora lo retomó para que no se vaya.`, c);
     avisar('tablero');
   }
 }, 20000);
@@ -199,11 +218,19 @@ async function cuerpo(req, max = 64 * 1024) {
   try { return s ? JSON.parse(s) : {}; } catch { return {}; }
 }
 
-const firma = createHash('sha256').update('panel:' + CLAVE_PANEL).digest('hex');
-function autorizado(req) {
+// Roles: cada uno entra con su clave y solo puede hacer lo suyo.
+const ROLES = {
+  dueno: { clave: CLAVE_PANEL, estados: ['nuevo', 'preparando', 'listo', 'en_camino', 'entregado', 'cancelado'] },
+  taller: { clave: process.env.TALLER_CLAVE || '', estados: ['preparando', 'listo'] },
+  reparto: { clave: process.env.REPARTO_CLAVE || '', estados: ['en_camino', 'entregado'] },
+};
+const firmaDe = rol => createHash('sha256').update(`panel:${rol}:${ROLES[rol].clave}`).digest('hex');
+function rolDe(req) {
   const m = (req.headers.cookie || '').match(/(?:^|;\s*)panel=([a-f0-9]{64})/);
-  return Boolean(m) && timingSafeEqual(Buffer.from(m[1]), Buffer.from(firma));
+  if (!m) return null;
+  return Object.keys(ROLES).find(rol => ROLES[rol].clave && timingSafeEqual(Buffer.from(m[1]), Buffer.from(firmaDe(rol)))) || null;
 }
+const PAGINA_DE_ROL = { dueno: '/panel', taller: '/taller', reparto: '/reparto' };
 
 // Límite simple para que nadie abuse del chat de prueba.
 const usos = new Map();
@@ -266,8 +293,8 @@ const servidor = http.createServer(async (req, res) => {
       const sesion = String(b.sesion || '').slice(0, 64);
       const texto = String(b.texto || '').trim().slice(0, 1000);
       if (!/^[\w-]{8,64}$/.test(sesion) || !texto) return json(res, 400, { error: 'Falta el mensaje.' });
-      const respuestas = await procesar('web', sesion, 'Visitante web', texto);
-      return json(res, 200, { respuestas });
+      const { respuestas, botones } = await procesar('web', sesion, 'Visitante web', texto);
+      return json(res, 200, { respuestas, botones });
     }
     // El chat web busca acá lo que le contestó una persona desde el panel.
     if (req.method === 'GET' && ruta.startsWith('/api/chat/')) {
@@ -280,13 +307,44 @@ const servidor = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && ruta === '/api/entrar') {
       const b = await cuerpo(req);
-      if (String(b.clave || '') !== CLAVE_PANEL) return json(res, 401, { error: 'Clave incorrecta.' });
-      res.setHeader('Set-Cookie', `panel=${firma}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : ''}`);
-      return json(res, 200, { ok: true });
+      const rol = Object.keys(ROLES).find(r => ROLES[r].clave && String(b.clave || '') === ROLES[r].clave);
+      if (!rol) return json(res, 401, { error: 'Clave incorrecta.' });
+      res.setHeader('Set-Cookie', `panel=${firmaDe(rol)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=2592000${req.headers['x-forwarded-proto'] === 'https' ? '; Secure' : ''}`);
+      return json(res, 200, { ok: true, rol, pagina: PAGINA_DE_ROL[rol] });
     }
 
     if (ruta.startsWith('/api/')) {
-      if (!autorizado(req)) return json(res, 401, { error: 'Entrá con la clave del panel.' });
+      const rol = rolDe(req);
+      if (!rol) return json(res, 401, { error: 'Entrá con tu clave.' });
+
+      if (req.method === 'GET' && ruta === '/api/yo') return json(res, 200, { rol, pagina: PAGINA_DE_ROL[rol] });
+
+      if (req.method === 'GET' && ruta === '/api/taller') {
+        const pedidos = datos.pedidosEn(NEGOCIO, ['nuevo', 'preparando'])
+          .map(({ id, estado, hora_limite, datos: d }) => ({ id, estado, hora_limite,
+            datos: { producto: d.producto, extras: d.extras, tarjeta: d.tarjeta, tono: d.tono, recibe: d.recibe } }));
+        return json(res, 200, { pedidos });
+      }
+      if (req.method === 'GET' && ruta === '/api/reparto') {
+        const pedidos = datos.pedidosEn(NEGOCIO, ['listo', 'en_camino'])
+          .map(({ id, estado, hora_limite, datos: d }) => ({ id, estado, hora_limite,
+            datos: { recibe: d.recibe, direccion: d.direccion, zona: d.zona, producto: d.producto, lat: d.lat ?? null, lng: d.lng ?? null } }));
+        const ruta_ = await rutaDeReparto(ficha, pedidos);
+        pedidos.sort((a, b) => ruta_.orden.indexOf(a.id) - ruta_.orden.indexOf(b.id));
+        return json(res, 200, { ruta: ruta_, pedidos, local: { lat: ficha.local_lat, lng: ficha.local_lng, direccion: ficha.direccion_local }, repartidor: posicionRepartidor });
+      }
+      if (req.method === 'POST' && ruta === '/api/reparto/posicion') {
+        if (rol !== 'reparto' && rol !== 'dueno') return json(res, 403, { error: 'No permitido.' });
+        const { lat, lng } = await cuerpo(req);
+        if (!(Math.abs(lat) <= 90 && Math.abs(lng) <= 180)) return json(res, 400, { error: 'Ubicación inválida.' });
+        posicionRepartidor = { lat: Number(lat), lng: Number(lng), en: Date.now() };
+        avisar('repartidor', posicionRepartidor);
+        return json(res, 200, { ok: true });
+      }
+
+      // De acá para abajo: solo el dueño (salvo cambiar estados, que controla cada rol).
+      const soloDueno = !/^\/api\/(eventos|pedidos\/\d+)$/.test(ruta);
+      if (soloDueno && rol !== 'dueno') return json(res, 403, { error: 'Esto lo ve solo el dueño.' });
 
       if (req.method === 'GET' && ruta === '/api/eventos') {
         res.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-store', Connection: 'keep-alive', 'X-Accel-Buffering': 'no' });
@@ -300,7 +358,7 @@ const servidor = http.createServer(async (req, res) => {
       let m;
       if (req.method === 'POST' && (m = ruta.match(/^\/api\/pedidos\/(\d+)$/))) {
         const { estado } = await cuerpo(req);
-        if (!['nuevo', 'preparando', 'en_camino', 'entregado', 'cancelado'].includes(estado)) return json(res, 400, { error: 'Estado no válido.' });
+        if (!ROLES[rol].estados.includes(estado)) return json(res, 403, { error: 'Ese cambio no lo podés hacer con tu usuario.' });
         const actual = datos.pedido(Number(m[1]));
         if (!actual || actual.negocio !== NEGOCIO) return json(res, 404, { error: 'No existe ese pedido.' });
         const p = datos.cambiarPedido(actual.id, estado);

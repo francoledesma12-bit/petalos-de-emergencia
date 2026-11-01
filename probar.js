@@ -80,5 +80,48 @@ console.log('\n━━━ 4. WhatsApp: mensaje entrante y alguien que contesta de
   void t;
 }
 
+console.log('\n━━━ 5. Botones en la charla');
+{
+  const sesion = 'prueba-botones-' + Date.now();
+  const r = await (await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sesion, texto: 'hola' }) })).json();
+  ver(r.botones?.length === 3 && r.botones.every(b => b.texto.length <= 25), 'el saludo trae 3 botones (máx. 25 letras)');
+  const r2 = await (await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sesion, texto: r.botones[1].texto }) })).json();
+  ver(r2.botones?.length === 3 && /Sillón|Perdoncito|Rodillas/.test(r2.botones.map(b => b.texto).join()), 'tocar "Nos peleamos" muestra los ramos como botones');
+  const r3 = await (await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sesion, texto: r2.botones[1].texto }) })).json();
+  ver(r3.respuestas.join().includes('tres tonos') && r3.botones?.length === 3, 'tocar un ramo pasa a las tarjetas con botones');
+}
+
+if (process.env.TALLER_CLAVE && process.env.REPARTO_CLAVE) {
+  console.log('\n━━━ 6. Roles: taller y reparto');
+  const entrarCon = async clave => {
+    const r = await fetch(`${BASE}/api/entrar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave }) });
+    return { rol: (await r.json()).rol, cookie: r.headers.get('set-cookie')?.split(';')[0] };
+  };
+  const como = cookie => async (ruta, cuerpo) => {
+    const r = await fetch(`${BASE}${ruta}`, { method: cuerpo ? 'POST' : 'GET', headers: { cookie, 'Content-Type': 'application/json' }, body: cuerpo && JSON.stringify(cuerpo) });
+    return { status: r.status, j: await r.json() };
+  };
+  const taller = await entrarCon(process.env.TALLER_CLAVE);
+  const reparto = await entrarCon(process.env.REPARTO_CLAVE);
+  ver(taller.rol === 'taller' && reparto.rol === 'reparto', 'cada clave entra con su rol');
+  const t = como(taller.cookie), rp = como(reparto.cookie);
+  const d = cliente();
+  await d('hola'); await d('nos peleamos con Juli'); await d('1'); await d('2');
+  await d('Mendoza 1500, Echesortu, recibe Juli, antes de las 21'); await d('si');
+  const cola = (await t('/api/taller')).j.pedidos;
+  ver(Array.isArray(cola) && cola.every(p => !('total' in p) && p.datos.tarjeta !== undefined), 'el taller ve qué armar y la tarjeta, sin precios');
+  ver((await t('/api/tablero')).status === 403, 'el taller no ve el panel del dueño');
+  const id = cola[0]?.id;
+  if (id) {
+    ver((await t(`/api/pedidos/${id}`, { estado: 'entregado' })).status === 403, 'el taller no puede marcar "entregado"');
+    await t(`/api/pedidos/${id}`, { estado: 'preparando' });
+    ver((await t(`/api/pedidos/${id}`, { estado: 'listo' })).status === 200, 'el taller lo marca "listo para salir"');
+    const rep = (await rp('/api/reparto')).j;
+    ver(rep.pedidos.some(p => p.id === id) && rep.ruta.orden.includes(id) && rep.ruta.mapa?.startsWith('https://www.google.com/maps'), 'el repartidor lo ve en su ruta con mapa');
+    ver((await rp(`/api/pedidos/${id}`, { estado: 'en_camino' })).status === 200, 'el repartidor sale');
+    ver((await rp('/api/reparto/posicion', { lat: -32.95, lng: -60.65 })).status === 200, 'el repartidor manda su ubicación');
+  }
+}
+
 console.log(fallas.length ? `\n❌ ${fallas.length} prueba(s) fallaron` : '\n✅ Todas las pruebas pasaron');
 process.exitCode = fallas.length ? 1 : 0;

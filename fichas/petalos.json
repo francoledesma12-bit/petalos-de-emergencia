@@ -5,7 +5,9 @@
   "asistente": "Flora",
   "lema": "La florería para los que se mandaron una macana.",
   "ciudad": "Rosario",
-  "direccion_local": "Pichincha, Rosario",
+  "direccion_local": "Bv. Oroño 1100, Pichincha, Rosario",
+  "local_lat": -32.9405,
+  "local_lng": -60.6478,
   "horario": { "dias": [0, 1, 2, 3, 4, 5, 6], "abre": 9, "cierra": 20, "ultimo_envio_mismo_dia": 18 },
   "minutos_para_volver_si_nadie_contesta": 2,
   "minutos_para_rescatar_venta": 3,
@@ -24,16 +26,16 @@
   },
 
   "productos": [
-    { "id": "perdoncito", "nombre": "Ramito Perdoncito", "detalle": "6 rosas rojas con follaje", "precio": 28000, "nivel": 1, "para": ["olvido", "pelea", "romance"] },
-    { "id": "sillon", "nombre": "Ramo Dormí en el Sillón", "detalle": "12 rosas rojas en papel kraft", "precio": 52000, "nivel": 2, "para": ["olvido", "pelea", "romance"] },
-    { "id": "rodillas", "nombre": "Ramo De Rodillas", "detalle": "24 rosas rojas, bombones y globo", "precio": 98000, "nivel": 3, "para": ["grave", "pelea", "olvido"] },
-    { "id": "aniversario", "nombre": "Caja Aniversario Salvado", "detalle": "Caja con rosas, astromelias y bombones", "precio": 75000, "nivel": 3, "para": ["olvido", "romance", "grave"] },
-    { "id": "girasoles", "nombre": "Girasoles de Festejo", "detalle": "5 girasoles con flores de estación", "precio": 34000, "nivel": 1, "para": ["cumple", "agradecer", "salud"] },
-    { "id": "estacion", "nombre": "Ramo Alegría de Estación", "detalle": "Flores de estación de colores", "precio": 42000, "nivel": 2, "para": ["cumple", "agradecer", "salud", "romance"] },
-    { "id": "suculenta", "nombre": "Planta que Dura", "detalle": "Suculenta en maceta de cerámica", "precio": 22000, "nivel": 1, "para": ["agradecer", "salud", "cumple"] },
-    { "id": "sobrio", "nombre": "Arreglo Blanco Sereno", "detalle": "Lilium y rosas blancas, sobrio", "precio": 60000, "nivel": 2, "para": ["condolencias"] },
-    { "id": "corona", "nombre": "Corona de Despedida", "detalle": "Corona de flores blancas con cinta", "precio": 120000, "nivel": 3, "para": ["condolencias"] },
-    { "id": "cesta", "nombre": "Cesta Recuerdo", "detalle": "Cesta baja de flores blancas y verdes", "precio": 45000, "nivel": 1, "para": ["condolencias"] }
+    { "id": "perdoncito", "corto": "Perdoncito", "nombre": "Ramito Perdoncito", "detalle": "6 rosas rojas con follaje", "precio": 28000, "nivel": 1, "para": ["olvido", "pelea", "romance"] },
+    { "id": "sillon", "corto": "Sillón", "nombre": "Ramo Dormí en el Sillón", "detalle": "12 rosas rojas en papel kraft", "precio": 52000, "nivel": 2, "para": ["olvido", "pelea", "romance"] },
+    { "id": "rodillas", "corto": "De Rodillas", "nombre": "Ramo De Rodillas", "detalle": "24 rosas rojas, bombones y globo", "precio": 98000, "nivel": 3, "para": ["grave", "pelea", "olvido"] },
+    { "id": "aniversario", "corto": "Aniversario", "nombre": "Caja Aniversario Salvado", "detalle": "Caja con rosas, astromelias y bombones", "precio": 75000, "nivel": 3, "para": ["olvido", "romance", "grave"] },
+    { "id": "girasoles", "corto": "Girasoles", "nombre": "Girasoles de Festejo", "detalle": "5 girasoles con flores de estación", "precio": 34000, "nivel": 1, "para": ["cumple", "agradecer", "salud"] },
+    { "id": "estacion", "corto": "Alegría", "nombre": "Ramo Alegría de Estación", "detalle": "Flores de estación de colores", "precio": 42000, "nivel": 2, "para": ["cumple", "agradecer", "salud", "romance"] },
+    { "id": "suculenta", "corto": "Planta", "nombre": "Planta que Dura", "detalle": "Suculenta en maceta de cerámica", "precio": 22000, "nivel": 1, "para": ["agradecer", "salud", "cumple"] },
+    { "id": "sobrio", "corto": "Blanco Sereno", "nombre": "Arreglo Blanco Sereno", "detalle": "Lilium y rosas blancas, sobrio", "precio": 60000, "nivel": 2, "para": ["condolencias"] },
+    { "id": "corona", "corto": "Corona", "nombre": "Corona de Despedida", "detalle": "Corona de flores blancas con cinta", "precio": 120000, "nivel": 3, "para": ["condolencias"] },
+    { "id": "cesta", "corto": "Cesta", "nombre": "Cesta Recuerdo", "detalle": "Cesta baja de flores blancas y verdes", "precio": 45000, "nivel": 1, "para": ["condolencias"] }
   ],
 
   "extras": [

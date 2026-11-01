@@ -60,7 +60,7 @@ function entenderConReglas(texto, estado, ficha) {
   if (dir) r.direccion = dir[1].trim();
   const recibe = texto.match(/(?:a nombre de|recibe|para)\s+([A-ZÁÉÍÓÚ][a-záéíóúñ]+)/);
   if (recibe) r.recibe = recibe[1];
-  if (/^(si|dale|ok|confirmo|de una|perfecto|listo|va|confirmado)\b/.test(t)) r.confirma = true;
+  if (/^[^a-z0-9]*(si|dale|ok|confirmo|confirmar|de una|perfecto|listo|va|confirmado)\b/.test(t)) r.confirma = true;
   if (/cancel|no quiero|deja nomas|olvidate/.test(t)) r.cancela = true;
   return r;
 }
@@ -276,7 +276,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
       return { respuestas: [
         `¡Hola! Soy ${ficha.asistente}, de ${ficha.nombre} 🌹 ${ficha.lema}`,
         'Contame qué pasó y te ayudo a arreglarlo: ¿te olvidaste de una fecha, hubo una pelea, es un cumple, una despedida…?',
-      ], estado };
+      ], botones: [{ id: 'olvido', texto: 'Me olvidé una fecha' }, { id: 'pelea', texto: 'Nos peleamos' }, { id: 'cumple', texto: 'Es un cumple' }], estado };
     }
     decir(frase || 'Contame un poquito más así te recomiendo bien.');
     decir('¿Para quién son las flores y qué pasó? Con eso te armo las opciones.');
@@ -293,9 +293,9 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
       serio ? 'Te sugiero estas opciones:' : 'Según el tamaño de la macana, te recomiendo:',
       ...ops.map((p, i) => `*${i + 1}.* ${p.nombre} — ${p.detalle} — *${pesos(p.precio)}*`),
       '',
-      serio ? 'Decime el número que prefieras.' : `Decime el número. Si querés sumar ${ficha.extras.map(x => x.nombre.toLowerCase()).join(', ')}, también.`,
+      serio ? 'Tocá el que prefieras.' : `Tocá el que te guste. Si querés sumar ${ficha.extras.map(x => x.nombre.toLowerCase()).join(', ')}, escribilo.`,
     ].join('\n'));
-    return { respuestas: out, estado };
+    return { respuestas: out, estado, botones: ops.map((p, i) => ({ id: String(i + 1), texto: `${i + 1}. ${p.corto} · ${pesos(p.precio)}`.slice(0, 25) })) };
   }
 
   // Paso 3: tarjeta.
@@ -309,9 +309,9 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
         'Te escribí la tarjeta en tres tonos:',
         ...textos.map((t, i) => `*${i + 1}. ${nombres[i][0].toUpperCase() + nombres[i].slice(1)}:* "${t}"`),
         '',
-        'Decime el número, mandame tu propio texto o escribí "sin tarjeta".',
+        'Tocá la que te guste, mandame tu propio texto o escribí "sin tarjeta".',
       ].join('\n'));
-      return { respuestas: out, estado };
+      return { respuestas: out, estado, botones: nombres.map((n, i) => ({ id: String(i + 1), texto: `${i + 1}. ${n[0].toUpperCase() + n.slice(1)}`.slice(0, 25) })) };
     }
     decir('Elegí la tarjeta con el número (1, 2 o 3), mandame tu texto o escribí "sin tarjeta".');
     return { respuestas: out, estado };
@@ -345,7 +345,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
       '',
       '¿Lo confirmo?',
     ].join('\n'));
-    return { respuestas: out, estado };
+    return { respuestas: out, estado, botones: [{ id: 'si', texto: '✅ Confirmar pedido' }, { id: 'persona', texto: '🙋 Hablar con alguien' }] };
   }
 
   const datos = {
@@ -380,6 +380,7 @@ export function textoCambioEstado(ficha, p) {
   const serio = p.datos.tono === 'serio';
   switch (p.estado) {
     case 'preparando': return `🌹 Ya estamos armando tu pedido #${p.id}.`;
+    case 'listo': return `✨ Tu pedido #${p.id} está listo y sale en un ratito.`;
     case 'en_camino': return `🛵 Tu pedido #${p.id} salió para ${p.datos.direccion}.`;
     case 'entregado': return serio ? `🤍 Pedido #${p.id} entregado. Te acompañamos.` : `✅ ¡Entregado! ${p.datos.recibe} ya tiene sus flores. Suerte 🍀`;
     case 'cancelado': return `Tu pedido #${p.id} quedó cancelado. Si fue un error, escribinos.`;
