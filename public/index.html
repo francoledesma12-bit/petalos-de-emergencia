@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="es-AR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f8f4ee">
+  <title>Pétalos de Emergencia · Flores que llegan a tiempo</title>
+  <meta name="description" content="Contanos qué pasó. Flora te ayuda a elegir flores, escribir la tarjeta y organizar la entrega en Rosario.">
+  <link rel="stylesheet" href="/styles.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <a class="skip" href="#contenido">Ir al contenido</a>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="Pétalos de Emergencia, inicio"><span class="brand-mark" aria-hidden="true">✿</span><span>Pétalos <small>de Emergencia</small></span></a>
+    <nav aria-label="Principal"><a href="#como-funciona">Cómo funciona</a><a href="#catalogo">Arreglos</a><a class="nav-cta" href="#consulta">Hablá con Flora</a></nav>
+  </header>
+  <main id="contenido">
+    <section class="hero wrap">
+      <div class="hero-copy">
+        <p class="eyebrow">FLORERÍA EN ROSARIO · ATENCIÓN INMEDIATA</p>
+        <h1>Las flores no arreglan todo.<br><em>Pero llegan a tiempo.</em></h1>
+        <p class="hero-lead">Te olvidaste de una fecha, querés sorprender o no sabés qué decir. Contale a Flora y armá un pedido en minutos, sin esperar que alguien pueda atender el teléfono.</p>
+        <div class="hero-actions"><a class="button primary" href="#consulta">Contale qué pasó <span aria-hidden="true">↗</span></a><a class="button quiet" href="#catalogo">Ver arreglos</a></div>
+        <p class="fine">Precios claros. Tarjeta personalizada. Entregas en Rosario y alrededores.</p>
+      </div>
+      <div class="hero-card" aria-label="Ejemplo de pedido">
+        <div class="hero-card-top"><span class="dot"></span> Flora está para ayudarte <span>✿</span></div>
+        <div class="mini-message mine">Me olvidé del aniversario y sale del trabajo a las seis 😬</div>
+        <div class="mini-message theirs">Respirá. Veamos qué flores le gustan y cuánto querés gastar. Después armamos una tarjeta que suene a vos.</div>
+        <div class="hero-card-foot">Una urgencia menos en tu día <span aria-hidden="true">↗</span></div>
+      </div>
+    </section>
+    <section id="como-funciona" class="steps wrap" aria-labelledby="steps-title">
+      <div class="section-heading"><p class="eyebrow">SIN VUELTAS</p><h2 id="steps-title">De “me mandé una” a “ya está en camino”.</h2></div>
+      <div class="step-grid"><article><span>01</span><h3>Contanos la situación</h3><p>Flora entiende la ocasión, el presupuesto y cuándo tienen que llegar las flores.</p></article><article><span>02</span><h3>Elegí con ayuda</h3><p>Te muestra opciones con precio real y te ayuda a escribir la tarjeta.</p></article><article><span>03</span><h3>Seguimos tu pedido</h3><p>La florería recibe todo ordenado y lo prepara según la hora de entrega.</p></article></div>
+    </section>
+    <section id="catalogo" class="catalog-section"><div class="wrap"><div class="section-heading"><p class="eyebrow">ARREGLOS CON INTENCIÓN</p><h2>Para pedir perdón, festejar o acompañar.</h2><p>Elegí uno y Flora te ayuda con el resto.</p></div><div id="catalogo-lista" class="catalog-grid" aria-live="polite"><p class="loading">Cargando arreglos…</p></div></div></section>
+    <section id="consulta" class="chat-section wrap"><div class="chat-intro"><p class="eyebrow">HABLÁ CON FLORA</p><h2>Empezá por lo que te pasó.</h2><p>Podés escribir como hablarías con una persona. Si preferís, tocá un ejemplo para arrancar.</p><div class="prompt-list"><button type="button" class="prompt" data-prompt="Me olvidé de nuestro aniversario. Necesito flores para hoy.">Me olvidé del aniversario</button><button type="button" class="prompt" data-prompt="Quiero mandar flores por un cumpleaños. Mi presupuesto es de 50000 pesos.">Es un cumpleaños</button><button type="button" class="prompt" data-prompt="Necesito un arreglo sobrio para acompañar a alguien en un momento triste.">Quiero acompañar a alguien</button></div><p class="chat-disclaimer">Esta conversación de prueba funciona en la web. Si querés hablar con una persona, pedíselo a Flora.</p></div><div class="chat-box"><div class="chat-head"><span class="avatar">✿</span><span><strong>Flora</strong><small>Asistente de Pétalos de Emergencia</small></span><span class="availability">Acá estoy</span></div><div id="mensajes" class="messages" role="log" aria-live="polite" aria-relevant="additions"><div class="bubble bot">Hola, soy Flora. Contame para quién son las flores y qué necesitás resolver. 💐</div></div><form id="chat-form" class="chat-form"><label class="sr-only" for="mensaje">Tu mensaje</label><input id="mensaje" name="mensaje" placeholder="Escribí tu mensaje…" autocomplete="off" maxlength="1200" required><button id="enviar" type="submit" aria-label="Enviar mensaje">Enviar <span aria-hidden="true">↗</span></button></form><p id="chat-error" class="form-error" role="alert" hidden></p></div></section>
+  </main>
+  <footer class="footer"><div class="wrap"><span class="brand small"><span class="brand-mark" aria-hidden="true">✿</span><span>Pétalos <small>de Emergencia</small></span></span><span>Hecho para que ninguna consulta quede esperando.</span><a href="/panel.html">Acceso al panel</a></div></footer>
+</body>
+</html>

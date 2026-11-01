@@ -1,0 +1,51 @@
+{
+  "_que_es": "Ficha del negocio. Todo lo propio de este comercio vive acá y no en el programa. Para otro negocio se arma otra ficha.",
+  "id": "petalos",
+  "nombre": "Pétalos de Emergencia",
+  "asistente": "Flora",
+  "lema": "La florería para los que se mandaron una macana.",
+  "ciudad": "Rosario",
+  "direccion_local": "Pichincha, Rosario",
+  "horario": { "dias": [0, 1, 2, 3, 4, 5, 6], "abre": 9, "cierra": 20, "ultimo_envio_mismo_dia": 18 },
+  "minutos_para_volver_si_nadie_contesta": 5,
+  "pago": "Transferencia o efectivo al recibir. El alias se manda al confirmar.",
+  "alias_pago": "petalos.emergencia",
+
+  "situaciones": {
+    "olvido": { "nombre": "Me olvidé de una fecha", "tono": "humor", "nivel_sugerido": 2 },
+    "pelea": { "nombre": "Nos peleamos", "tono": "humor", "nivel_sugerido": 2 },
+    "grave": { "nombre": "La macana fue grande", "tono": "humor", "nivel_sugerido": 3 },
+    "romance": { "nombre": "Sorpresa romántica", "tono": "calido", "nivel_sugerido": 2 },
+    "cumple": { "nombre": "Cumpleaños o festejo", "tono": "calido", "nivel_sugerido": 1 },
+    "agradecer": { "nombre": "Agradecer", "tono": "calido", "nivel_sugerido": 1 },
+    "condolencias": { "nombre": "Condolencias", "tono": "serio", "nivel_sugerido": 2 },
+    "salud": { "nombre": "Que se mejore", "tono": "calido", "nivel_sugerido": 1 }
+  },
+
+  "productos": [
+    { "id": "perdoncito", "nombre": "Ramito Perdoncito", "detalle": "6 rosas rojas con follaje", "precio": 28000, "nivel": 1, "para": ["olvido", "pelea", "romance"] },
+    { "id": "sillon", "nombre": "Ramo Dormí en el Sillón", "detalle": "12 rosas rojas en papel kraft", "precio": 52000, "nivel": 2, "para": ["olvido", "pelea", "romance"] },
+    { "id": "rodillas", "nombre": "Ramo De Rodillas", "detalle": "24 rosas rojas, bombones y globo", "precio": 98000, "nivel": 3, "para": ["grave", "pelea", "olvido"] },
+    { "id": "aniversario", "nombre": "Caja Aniversario Salvado", "detalle": "Caja con rosas, astromelias y bombones", "precio": 75000, "nivel": 3, "para": ["olvido", "romance", "grave"] },
+    { "id": "girasoles", "nombre": "Girasoles de Festejo", "detalle": "5 girasoles con flores de estación", "precio": 34000, "nivel": 1, "para": ["cumple", "agradecer", "salud"] },
+    { "id": "estacion", "nombre": "Ramo Alegría de Estación", "detalle": "Flores de estación de colores", "precio": 42000, "nivel": 2, "para": ["cumple", "agradecer", "salud", "romance"] },
+    { "id": "suculenta", "nombre": "Planta que Dura", "detalle": "Suculenta en maceta de cerámica", "precio": 22000, "nivel": 1, "para": ["agradecer", "salud", "cumple"] },
+    { "id": "sobrio", "nombre": "Arreglo Blanco Sereno", "detalle": "Lilium y rosas blancas, sobrio", "precio": 60000, "nivel": 2, "para": ["condolencias"] },
+    { "id": "corona", "nombre": "Corona de Despedida", "detalle": "Corona de flores blancas con cinta", "precio": 120000, "nivel": 3, "para": ["condolencias"] },
+    { "id": "cesta", "nombre": "Cesta Recuerdo", "detalle": "Cesta baja de flores blancas y verdes", "precio": 45000, "nivel": 1, "para": ["condolencias"] }
+  ],
+
+  "extras": [
+    { "id": "bombones", "nombre": "Caja de bombones", "precio": 12000 },
+    { "id": "peluche", "nombre": "Osito de peluche", "precio": 15000 },
+    { "id": "globo", "nombre": "Globo con mensaje", "precio": 6000 }
+  ],
+
+  "zonas": [
+    { "id": "centro", "nombre": "Centro", "precio": 4500, "barrios": ["centro", "microcentro", "macrocentro", "bv oroño", "oroño", "plaza 25", "peatonal"] },
+    { "id": "cercana", "nombre": "Pichincha y alrededores", "precio": 5500, "barrios": ["pichincha", "echesortu", "abasto", "martin", "parque independencia", "republica de la sexta", "lourdes", "luis agote", "alberdi", "arroyito", "refineria"] },
+    { "id": "media", "nombre": "Barrios más lejos", "precio": 7500, "barrios": ["belgrano", "saladillo", "tablada", "barrio parque", "alberdi norte", "la florida", "rucci", "empalme", "ludueña", "azcuenaga", "bella vista", "matheu"] },
+    { "id": "lejos", "nombre": "Fisherton y afueras", "precio": 9500, "barrios": ["fisherton", "funes", "roldan", "roldán", "funes city", "granadero baigorria", "baigorria", "villa gobernador galvez", "vgg"] }
+  ],
+  "zona_por_defecto": "media"
+}
