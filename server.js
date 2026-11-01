@@ -93,6 +93,22 @@ async function procesar(canal, chatId, nombre, texto, responderConAudio = false)
     c.estado = r.estado;
     const dichas = [...r.respuestas];
 
+    if (r.resena && c.estado.pide_resena) {
+      const pid = c.estado.pide_resena;
+      datos.guardarResena(NEGOCIO, pid, r.resena);
+      c.estado.pide_resena = null;
+      if (r.resena >= 4) dichas.push(r.resena === 5 ? '¡Gracias! Nos alegra muchísimo 🌷 Te esperamos para la próxima.' : '¡Gracias por tu opinión! 🌷 Te esperamos para la próxima.');
+      else { c.estado.espera_comentario = pid; dichas.push('Gracias por decírnoslo 🙏 ¿Qué podemos mejorar? Te leo y se lo paso al equipo.'); }
+      avisar('tablero');
+    } else if (r.comentario && c.estado.espera_comentario) {
+      const pid = c.estado.espera_comentario;
+      datos.comentarResena(pid, r.comentario);
+      c.estado.espera_comentario = null;
+      dichas.push('Gracias, ya se lo pasé al equipo. Lo vamos a tener en cuenta 🌷');
+      avisarDueno(`⭐ *Reseña del pedido #${pid}* · ${quien(c)}
+"${r.comentario}"`, c);
+      avisar('tablero');
+    }
     if (r.pago && c.estado.pedido_id) {
       datos.sumarDatos(c.estado.pedido_id, { pago_informado: Date.now() });
       avisarDueno(`💳 *Pedido #${c.estado.pedido_id}* · ${quien(c)} avisa que ya pagó. Revisá la transferencia.`, c);
@@ -430,6 +446,13 @@ const servidor = http.createServer(async (req, res) => {
         return res.end(contenido);
       } catch { return json(res, 404, { error: 'no existe' }); }
     }
+    if (req.method === 'GET' && (f = ruta.match(/^\/fotos\/(flora-[0-9a-f-]{36}\.mp3)$/))) {
+      try {
+        const contenido = await readFile(join(FOTOS, f[1]));
+        res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Content-Length': contenido.length, 'Cache-Control': 'public, max-age=86400' });
+        return res.end(contenido);
+      } catch { return json(res, 404, { error: 'no existe' }); }
+    }
     if (req.method === 'GET' && ruta === '/api/salud') {
       return json(res, 200, { ok: true, ia: iaActiva(), ia_evento: eventoActivo(), imagenes: filaDeImagenes(), whatsapp: await estadoWA() });
     }
@@ -539,6 +562,14 @@ const servidor = http.createServer(async (req, res) => {
         const texto = textoCambioEstado(ficha, p);
         if (texto && estado !== actual.estado) await decir(datos.charlaPorId(p.charla_id), texto, 'aviso');
         if (estado === 'entregado' && esSorpresa(p)) regaloAlDestinatario(p.id, { aunSinImagen: true });
+        if (estado === 'entregado' && estado !== actual.estado && p.datos.tono !== 'serio') {
+          // Reseña con botones, sin salir de la charla.
+          const c = datos.charlaPorId(p.charla_id);
+          c.estado.pide_resena = p.id;
+          datos.guardarEstado(c);
+          await decir(c, `¿Cómo fue tu experiencia con ${ficha.nombre}? Tu opinión nos ayuda mucho 🌷`, 'aviso',
+            [{ id: 'r5', texto: '⭐⭐⭐⭐⭐ Excelente' }, { id: 'r4', texto: '⭐⭐⭐⭐ Muy buena' }, { id: 'r3', texto: '⭐⭐⭐ Mejorable' }]);
+        }
         avisar('tablero');
         return json(res, 200, { ok: true, pedido: p });
       }

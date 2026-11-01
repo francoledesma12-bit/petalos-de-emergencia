@@ -326,6 +326,12 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     if (e.situacion && e.situacion !== estado.situacion) {
       Object.keys(estado).forEach(k => delete estado[k]);
     } else {
+      // Reseña con botones después de la entrega.
+      if (estado.pide_resena) {
+        const n = /excelente|5|⭐⭐⭐⭐⭐/.test(texto) ? 5 : /muy buena|4|⭐⭐⭐⭐/.test(texto) ? 4 : /mejorable|regular|mal|3|⭐⭐⭐/.test(normal(texto)) ? 3 : null;
+        if (n) return { respuestas: [], resena: n, estado };
+      }
+      if (estado.espera_comentario) return { respuestas: [], comentario: texto.slice(0, 500), estado };
       // Sumar extras a un pedido ya confirmado (el servidor controla si todavía se llega).
       if (e.extras?.length) return { respuestas: [], agregar: e.extras, estado };
       if (/pagad|pague|pago|transferi|transferencia|comprobante|abone/.test(normal(texto))) {

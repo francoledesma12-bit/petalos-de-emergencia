@@ -59,6 +59,16 @@ CREATE TABLE IF NOT EXISTS avisos (
   creado_en INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS avisos_negocio ON avisos(negocio, resuelto);
+
+CREATE TABLE IF NOT EXISTS resenas (
+  id INTEGER PRIMARY KEY,
+  negocio TEXT NOT NULL,
+  pedido_id INTEGER NOT NULL REFERENCES pedidos(id),
+  estrellas INTEGER NOT NULL,
+  comentario TEXT,
+  creada_en INTEGER NOT NULL,
+  UNIQUE (pedido_id)
+);
 `);
 
 const ahora = () => Date.now();
@@ -118,6 +128,15 @@ export function pedidosEn(negocio, estados) {
     ORDER BY COALESCE(hora_limite, creado_en)`).all(negocio, ...estados).map(p => ({ ...p, datos: JSON.parse(p.datos) }));
 }
 
+export function guardarResena(negocio, pedidoId, estrellas) {
+  db.prepare('INSERT INTO resenas (negocio, pedido_id, estrellas, creada_en) VALUES (?,?,?,?) ON CONFLICT(pedido_id) DO UPDATE SET estrellas=excluded.estrellas')
+    .run(negocio, pedidoId, estrellas, Date.now());
+}
+
+export function comentarResena(pedidoId, comentario) {
+  db.prepare('UPDATE resenas SET comentario=? WHERE pedido_id=?').run(comentario, pedidoId);
+}
+
 export function cambiarTotal(id, total) {
   db.prepare('UPDATE pedidos SET total=?, cambiado_en=? WHERE id=?').run(total, Date.now(), id);
 }
@@ -164,5 +183,8 @@ export function tablero(negocio) {
     WHERE negocio=? AND estado!='cancelado' AND creado_en >= ?`).get(negocio, desde.getTime());
   const charlasHoy = db.prepare('SELECT COUNT(*) AS n FROM charlas WHERE negocio=? AND ultimo_mensaje_en >= ?')
     .get(negocio, desde.getTime()).n;
-  return { pedidos, avisos, hoy: { ...hoy, charlas: charlasHoy } };
+  const resenas = db.prepare(`SELECT r.*, json_extract(p.datos,'$.cliente') AS cliente FROM resenas r JOIN pedidos p ON p.id=r.pedido_id
+    WHERE r.negocio=? ORDER BY r.creada_en DESC LIMIT 20`).all(negocio);
+  const prom = db.prepare('SELECT COUNT(*) AS cantidad, ROUND(AVG(estrellas),1) AS promedio FROM resenas WHERE negocio=?').get(negocio);
+  return { pedidos, avisos, resenas, hoy: { ...hoy, charlas: charlasHoy, resenas: prom.cantidad, estrellas: prom.promedio } };
 }
