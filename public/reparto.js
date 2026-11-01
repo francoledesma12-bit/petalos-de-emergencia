@@ -12,9 +12,12 @@ function stop(p, index) {
   c.append(node('h3','',d.recibe || 'Persona por confirmar'));
   c.append(node('p','address',d.direccion || d.zona || 'Dirección pendiente'));
   if (d.zona && d.direccion) c.append(node('p','',d.zona));
+  if (d.ventana) c.append(node('p','delivery-window',`Horario acordado: ${d.ventana}`));
+  if (d.notas) c.append(node('p','work-notes',`⚑ ${d.notas}`));
   c.append(node('p','',d.producto || 'Pedido floral'));
   const actions=node('div','stop-actions');
   if (d.direccion) {const link=node('a','','Cómo llegar ↗'); link.href=mapsUrl(d.direccion); link.target='_blank'; link.rel='noopener noreferrer'; actions.append(link);}
+  const phone=String(d.telefono||'').replace(/\D/g,'');if(phone.length>=10&&phone.length<=15){const call=node('a','','Llamar');call.href=`tel:+${phone}`;actions.append(call);}
   const next=p.estado==='listo'?'en_camino':'entregado'; const b=node('button','primary-button',next==='en_camino'?'Salgo con este pedido →':'Marcar entregado ✓'); b.type='button';
   b.addEventListener('click',async()=>{b.disabled=true;error('');try{await api(`/api/pedidos/${encodeURIComponent(p.id)}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({estado:next})});await refresh();}catch(e){error(e.message);b.disabled=false;}});
   actions.append(b); c.append(actions); return c;

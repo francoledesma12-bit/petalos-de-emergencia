@@ -12,6 +12,7 @@ function card(p) {
   c.append(node('h3','',d.producto || 'Ramo por confirmar'));
   const extra = extras(d.extras); if (extra) c.append(node('p','extras',`Agregar: ${extra}`));
   if (d.recibe) c.append(node('p','',`Recibe: ${d.recibe}`));
+  if (d.notas) c.append(node('p','work-notes',`⚑ Importante: ${d.notas}`));
   c.append(node('span','card-label','TEXTO DE LA TARJETA'));
   c.append(node('div','card-text',d.tarjeta || 'Sin texto de tarjeta'));
   if (d.tono) c.append(node('p','extras',`Tono: ${d.tono}`));

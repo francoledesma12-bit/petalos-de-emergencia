@@ -4,3 +4,4 @@
 .event-ribbon small{display:block;margin-top:4px;font-size:10px;font-weight:800;letter-spacing:.08em;color:#d7e2d6;text-transform:uppercase}
 @media(max-width:560px){.event-ribbon{padding:10px 12px}.event-ribbon strong{font-size:16px}}
 .chat-buttons[hidden]{display:none}.chat-buttons{display:flex;flex-wrap:wrap;gap:8px;padding:0 16px 12px;background:#fffdfa}.chat-buttons button{border:1px solid #c78b95;background:#fff;color:#8d3544;border-radius:999px;padding:9px 13px;font-size:12px;font-weight:800}.chat-buttons button:hover{background:#f8ecee}
+.chat-product-image{margin:9px 0 13px;max-width:min(250px,80%);background:white;border-radius:13px;overflow:hidden;box-shadow:0 5px 18px #2e281b1c}.chat-product-image img{display:block;width:100%;height:auto}.chat-product-image figcaption{padding:9px 12px;font-size:12px;color:#465146;white-space:pre-line}
