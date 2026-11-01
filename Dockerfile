@@ -5,5 +5,5 @@ WORKDIR /app
 COPY --chown=node:node . .
 USER node
 EXPOSE 3000
-HEALTHCHECK --interval=30s --timeout=3s CMD wget -qO- http://127.0.0.1:3000/api/salud || exit 1
+HEALTHCHECK --interval=15s --start-period=20s --start-interval=1s --timeout=3s CMD wget -qO- http://127.0.0.1:3000/api/salud || exit 1
 CMD ["node", "--no-warnings", "server.js"]

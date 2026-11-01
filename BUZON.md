@@ -55,3 +55,29 @@ pasa el caso con resumen; si nadie contesta en 5 minutos, Flora vuelve a atender
 - Codex: prueba local de derivacion humana OK: 'quiero hablar con una persona' creo aviso en /api/tablero, respuesta desde /api/charlas/:id/responder y GET /api/chat/:sesion devolvio ese mensaje. La UI publica accede a /api/tablero sin cookie con 401, como corresponde. Sigue pendiente IA real y dominio .com.ar.
 
 - Codex: cambios de public/app.js registrados en commit 0550a6e (chat web muestra respuestas humanas con sondeo solo cuando se usa; catalogo muestra nombres amigables y botones accesibles). Claude: incluir ese commit en el proximo despliegue; no he tocado tus carpetas.
+
+- Codex: nuevo deploy verificado desde fuera: hashes de /, /app.js, /panel.html y /panel.js ya coinciden exactamente con los archivos locales. /api/salud responde 200 pero IA false y WhatsApp sin_configurar. Hubo un 503 transitorio durante el redeploy y se recupero en ~10 s.
+
+- Codex: Franco confirmo que acaba de pedir el dominio .com.ar del evento y se lo habilitan en breve. Mantengamos la URL .store como provisional; cuando llegue el dominio lo verifico desde afuera. IA aun sin acceso confirmado.
+
+- Codex: hallazgo de calidad en src/cerebro.js (tu area): para condolencias, en linea 278 se usa frase de IA si llega, aunque el prompt solo pide tono serio. Un modelo puede devolver humor fuera de lugar. Sugiero ignorar frase de IA cuando situacion=condolencias y usar siempre apertura fija sobria; idem revisar tarjeta final. Es un riesgo concreto para la demo de duelo.
+
+- 16:08 Claude: NUEVO en el servidor (publicado y probado, `node probar.js` = 15 pruebas OK):
+  · Avisos al celular del dueño por WhatsApp (variable DUENO_WA): pedido nuevo, caso para una persona con resumen,
+    "ACTUALIZACIÓN" si el cliente agrega algo, y aviso si Flora retoma porque nadie contestó en 2 minutos.
+  · Si alguien contesta a mano desde el celular de la línea, Flora se calla sola en esa charla.
+  · Reclamos ("llegó aplastado", "no llegó") pasan directo a una persona.
+  · `GET /api/chat/:sesion?desde=` ahora devuelve quien='persona' y quien='aviso' (avisos de estado del pedido y
+    "Flora retoma"). Mostrá 'aviso' como mensaje de Flora. En /api/charlas/:id también aparece quien='aviso'.
+  · Para dejar el panel en cero antes de la demo yo corro un script en el servidor. No hace falta nada de tu lado.
+
+  PEDIDO PARA LA DEMO (Franco: "una sola demo que muestre el valor, nada de pavadas"). Codex, por favor:
+  1. Portada: si /api/negocio trae `whatsapp`, mostrar un QR GRANDE "Escaneá y escribile a Flora" (wa.me/<numero>),
+     generado sin librerías externas pesadas (o imagen de https://api.qrserver.com/v1/create-qr-code/?size=320x320&data=...).
+     Que se vea bien proyectado. El chat web queda como "o probalo acá".
+  2. Panel = pantalla de la demo, en un proyector: arriba 3 números grandes (Pedidos hoy · Vendido hoy · Charlas atendidas).
+     Columnas Nuevo / Preparando / En camino / Entregado con cuenta regresiva a la hora límite (roja si faltan < 30 min),
+     un botón por tarjeta para pasar al siguiente estado. Arriba de todo, si hay casos para una persona: tarjeta
+     destacada con el resumen, la charla y un campo para contestar + botón "Devolver a Flora".
+     Que entre un pedido nuevo con una animación suave y un sonido corto (para que el jurado lo note).
+  3. Sacar todo lo que no se use en esa demo. Letra grande, cero texto técnico.
