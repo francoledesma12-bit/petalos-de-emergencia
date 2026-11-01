@@ -20,3 +20,22 @@
 .flora-dock svg{width:16px;height:16px}
 .flora-dock.oculto{opacity:0;transform:translateY(18px);pointer-events:none}
 @media(max-width:750px){.hero-actions .button.primary{width:100%}.hero-actions .button.call{flex:1}}
+.hecho{padding-top:70px;padding-bottom:90px;scroll-margin-top:80px}
+.hecho-video{margin-top:30px;border-radius:22px;overflow:hidden;background:#1f2a24;box-shadow:0 30px 70px -35px #1f2a24}
+.hecho-video video{display:block;width:100%;aspect-ratio:16/9;background:#1f2a24}
+.hecho-links{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:22px}
+.hecho-links .button{min-height:50px;border-radius:999px;padding:0 22px;gap:10px;font-size:15px}
+.hecho-links .button.primary{background:linear-gradient(180deg,#b44a5c,#962f42);box-shadow:0 12px 26px -12px #962f42}
+@media(max-width:750px){.hecho{padding-top:40px;padding-bottom:110px}.hecho-video{border-radius:14px}}
+.tech-strip{display:block;background:linear-gradient(90deg,#0f1714,#1c2a3a 55%,#2a1630);color:#e9f1ee;text-decoration:none;border-bottom:1px solid #ffffff14;position:relative;overflow:hidden}
+.tech-strip::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,#ffffff06 0 1px,transparent 1px 28px);pointer-events:none}
+.tech-wrap{max-width:1180px;margin:0 auto;padding:11px 24px;display:flex;align-items:center;gap:16px;font:600 13px/1.2 Inter,ui-sans-serif,system-ui,sans-serif;position:relative;z-index:1}
+.tech-tag{display:inline-flex;align-items:center;gap:8px;font:700 11px/1 ui-monospace,SFMono-Regular,Consolas,monospace;letter-spacing:.12em;color:#7dd3fc}
+.tech-dot{width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 10px #4ade80;animation:flora-pulso 2s infinite}
+.tech-strip strong{font-size:14px;color:#fff}
+.tech-chips{display:flex;gap:6px;flex-wrap:wrap}
+.tech-chips span{font:600 11px/1 ui-monospace,SFMono-Regular,Consolas,monospace;padding:5px 8px;border-radius:6px;background:#ffffff12;border:1px solid #ffffff1f;color:#cfe3dc}
+.tech-cta{margin-left:auto;font-weight:700;color:#f0abfc;white-space:nowrap}
+.tech-strip:hover .tech-cta{color:#fff}
+@media(max-width:900px){.tech-chips{display:none}}
+@media(max-width:520px){.tech-wrap{padding:9px 16px;gap:10px}.tech-tag{font-size:10px}}
