@@ -11,7 +11,7 @@ import { atender, resumenParaPersona, textoPedidoCreado, textoCambioEstado } fro
 import { enviar, enviarConAcciones, escribiendo, imagen, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
 import { rutaDeReparto } from './src/reparto.js';
 import { ubicar } from './src/mapa.js';
-import { dibujarRamo, dibujarAgradecimiento, pasarATexto, eventoActivo } from './src/evento.js';
+import { dibujarRamo, dibujarAgradecimiento, pasarATexto, eventoActivo, filaDeImagenes } from './src/evento.js';
 import { iaActiva } from './src/ia.js';
 
 const PUERTO = Number(process.env.PORT || 3000);
@@ -74,7 +74,7 @@ async function procesar(canal, chatId, nombre, texto) {
     const c = datos.charla(NEGOCIO, canal, chatId, nombre);
     const historial = datos.historial(c.id);
     datos.anotar(c.id, 'cliente', texto);
-    if (canal === 'whatsapp' && c.atiende === 'flora') escribiendo(chatId, 2500);
+    // (sin "escribiendo…": GREEN-API lo pone en la misma fila de envío y frena a todos)
     avisar('mensaje', { charla_id: c.id, quien: 'cliente', texto });
 
     // La atiende una persona: Flora no se mete. Si el cliente agrega algo, le llega al dueño.
@@ -147,12 +147,13 @@ async function procesar(canal, chatId, nombre, texto) {
     // Solo las imágenes que ya existen en public/ (si falta alguna, la charla sigue igual).
     const imagenes = (r.imagenes || []).filter(im => existsSync(join(PUBLICO, im.archivo)))
       .map(im => ({ url: `/${im.archivo}`, texto: im.texto }));
-    for (const [i, t] of dichas.entries()) {
-      const ultimo = i === dichas.length - 1;
-      if (ultimo && canal === 'whatsapp' && SITIO) {
-        for (const im of imagenes) await imagen(chatId, SITIO + im.url, im.texto);
-      }
-      await decir(c, t, 'flora', ultimo ? botones : []);
+    if (canal === 'whatsapp') {
+      // GREEN-API manda de a un mensaje cada medio segundo para TODA la línea: con mucha gente a la vez,
+      // conviene un solo mensaje por respuesta (las imágenes del catálogo van antes, si existen).
+      if (SITIO) for (const im of imagenes) await imagen(chatId, SITIO + im.url, im.texto);
+      if (dichas.length) await decir(c, dichas.join('\n\n'), 'flora', botones);
+    } else {
+      for (const [i, t] of dichas.entries()) await decir(c, t, 'flora', i === dichas.length - 1 ? botones : []);
     }
     if (r.persona || r.pedido) avisar('tablero');
     return { respuestas: dichas, botones, imagenes };
@@ -208,7 +209,10 @@ function agradecer(charlaId, p) {
   if (!eventoActivo()) return;
   const c0 = datos.charlaPorId(charlaId);
   const nombre = (p.datos.cliente || c0.nombre || '').split(' ')[0].replace(/[^\p{L}]/gu, '').slice(0, 20) || null;
-  dibujarAgradecimiento({ id: p.id, nombre: nombre === 'Visitante' ? null : nombre, estilo: p.datos.estilo, tono: p.datos.tono, negocio: ficha.nombre }, FOTOS)
+  const dl = new Date(p.hora_limite);
+  const entrega = `${dl.toLocaleDateString('es-AR', { weekday: 'long' })} ${dl.getDate()}/${dl.getMonth() + 1} antes de las ${dl.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+  dibujarAgradecimiento({ id: p.id, nombre: nombre === 'Visitante' ? null : nombre, negocio: ficha.nombre, producto: p.datos.producto, estilo: p.datos.estilo,
+    extras: p.datos.extras, recibe: p.datos.recibe, entrega, total: '$ ' + p.total.toLocaleString('es-AR'), tarjeta: p.datos.tarjeta, tono: p.datos.tono }, FOTOS)
     .then(archivo => archivo && enCola(`${c0.canal}:${c0.chat_id}`, async () => {
       const url = `/fotos/${archivo}`;
       datos.sumarDatos(p.id, { agradecimiento: url });
@@ -349,11 +353,11 @@ const PAGINA_DE_ROL = { dueno: '/panel', taller: '/taller', reparto: '/reparto' 
 
 // Límite simple para que nadie abuse del chat de prueba.
 const usos = new Map();
-function demasiado(ip) {
+function demasiado(clave, max) {
   const minuto = Math.floor(Date.now() / 60000);
-  const u = usos.get(ip);
-  if (!u || u.minuto !== minuto) { usos.set(ip, { minuto, n: 1 }); return false; }
-  return ++u.n > 30;
+  const u = usos.get(clave);
+  if (!u || u.minuto !== minuto) { usos.set(clave, { minuto, n: 1 }); if (usos.size > 5000) usos.clear(); return false; }
+  return ++u.n > max;
 }
 
 function fichaPublica() {
@@ -398,7 +402,7 @@ const servidor = http.createServer(async (req, res) => {
       } catch { return json(res, 404, { error: 'no existe' }); }
     }
     if (req.method === 'GET' && ruta === '/api/salud') {
-      return json(res, 200, { ok: true, ia: iaActiva(), ia_evento: eventoActivo(), whatsapp: await estadoWA() });
+      return json(res, 200, { ok: true, ia: iaActiva(), ia_evento: eventoActivo(), imagenes: filaDeImagenes(), whatsapp: await estadoWA() });
     }
     if (req.method === 'GET' && ruta === '/api/negocio') return json(res, 200, fichaPublica());
 
@@ -412,9 +416,9 @@ const servidor = http.createServer(async (req, res) => {
 
     // Chat web de prueba: mismo cerebro que WhatsApp.
     if (req.method === 'POST' && ruta === '/api/chat') {
-      if (demasiado(ip)) return json(res, 429, { error: 'Muchos mensajes seguidos. Esperá un minuto.' });
       const b = await cuerpo(req);
       const sesion = String(b.sesion || '').slice(0, 64);
+      if (demasiado(ip, 400) || demasiado('s:' + sesion, 25)) return json(res, 429, { error: 'Muchos mensajes seguidos. Esperá un minuto.' });
       const texto = String(b.texto || '').trim().slice(0, 1000);
       if (!/^[\w-]{8,64}$/.test(sesion) || !texto) return json(res, 400, { error: 'Falta el mensaje.' });
       const { respuestas, botones, imagenes } = await procesar('web', sesion, 'Visitante web', texto);

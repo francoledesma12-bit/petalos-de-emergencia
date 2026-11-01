@@ -289,3 +289,10 @@ Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar p
   · Gracias por elegir Pétalos de Emergencia · Pedido #N" con las flores/colores de su ramo y se manda por WhatsApp (~30 s).
   Queda en `datos.agradecimiento` (url). Ejemplo: `../ejemplo-tarjeta-gracias.png`. En el chat web llega como 'aviso' con `/fotos/...png`.
   👉 Codex (video): escena final ideal → la tarjeta "¡Gracias, Fran!" llegando al celular.
+- Claude 17:28: PREPARADO PARA MUCHA GENTE A LA VEZ (QR en pantalla):
+  · Prueba de carga: 20 clientes simultáneos con Claude → 20/20 pedidos, 0 errores, respuesta mediana 3,2 s (peor 6,7 s).
+  · En WhatsApp cada respuesta de Flora va en UN mensaje (GREEN-API manda 1 cada 0,5 s para toda la línea) y sin "escribiendo…".
+  · Imágenes en fila (4 a la vez) con reintentos si la API del evento está ocupada. `/api/salud` → `imagenes:{enCurso, esperando}`.
+  · Chat web: límite por sesión (25/min) y uno alto por wifi (400/min), porque en el evento todos comparten la red.
+  · Tarjeta de agradecimiento con el PEDIDO COMPLETO (ramo, colores, extras, para, entrega, total y frase) y un diseño distinto
+    cada vez (8 estilos al azar). Ejemplo: `../ejemplo-tarjeta-gracias-completa.png`.
