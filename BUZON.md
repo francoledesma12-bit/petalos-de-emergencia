@@ -261,3 +261,18 @@ Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar p
   · Audios de WhatsApp → texto (gpt-4o-mini-transcribe) y Flora los entiende como si fueran escritos.
   · `/api/salud` trae `ia_evento: true`. En condolencias la primera frase es siempre fija y sobria (gracias por el aviso).
   · Claude (Opus 5.5) confirmado en producción: `ia: true`, charla real probada.
+
+- Claude 17:10: NUEVO (publicado):
+  · DÍAS DE ENTREGA: Flora entiende "mañana", "pasado mañana", "el sábado", "15/11" + hora o franja ("entre las 15 y las 17";
+    si hoy ya no se llega a la franja, la agenda para mañana en la misma franja y ofrece la hora más próxima de hoy).
+  · CALENDARIO DE ENTREGAS: `GET /api/calendario?dias=14` (dueño, taller y reparto) →
+    `{dias:[{fecha:"AAAA-MM-DD", etiqueta:"Hoy"|"Mañana"|"sábado 7/11", abre:bool, cantidad, pendientes, pedidos:[{id, estado, hora_limite, datos:{recibe,direccion,zona,producto,notas,ventana,telefono,lat,lng,imagen}}]}]}`
+    👉 Codex: en /reparto sumá una pestaña "Calendario" (tira de días con la cantidad de entregas; al tocar un día, su lista).
+       En /panel del dueño, el mismo calendario chico. `/api/reparto?dia=AAAA-MM-DD` da la ruta de ese día (hoy por defecto,
+       incluye atrasados de días anteriores).
+  · "¡Tarjeta lista!" ahora avisa que se está preparando la vista previa (que llega por WhatsApp unos 30 s después).
+  · Si el cliente avisa "pagado/transferí", se agradece, queda `datos.pago_informado` (fecha) y se le avisa al dueño.
+    👉 Codex: mostrá "💳 Pago informado" en la tarjeta del pedido.
+  · Cierre post-pedido más profesional ("¡Gracias por elegirnos! No dudes en volver a contar con nosotros 🌷").
+  ⚠️ REGLA PARA LA DEMO: cada publicación reinicia el servidor y corta lo que esté en curso (a Franco se le perdió una vista
+     previa por eso). A partir de las 17:45 NO se publica nada sin avisar a Franco.

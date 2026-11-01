@@ -4,13 +4,29 @@
 // 3. Contestar (plantillas + una frase de la IA ya controlada).
 // 4. Controlar (código): la IA nunca pone precios; los totales salen de la ficha.
 import { pedirJSON } from './ia.js';
+import { eventoActivo } from './evento.js';
 
 const pesos = n => '$ ' + Math.round(n).toLocaleString('es-AR');
 const normal = s => (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 const hhmm = ms => new Date(ms).toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false });
+const diaLargo = d => `${d.toLocaleDateString('es-AR', { weekday: 'long' })} ${d.getDate()}/${d.getMonth() + 1}`;
 const cuando = ms => { const d = new Date(ms), hoy = new Date(), man = new Date(Date.now() + 864e5);
-  const dia = d.toDateString() === hoy.toDateString() ? 'hoy' : d.toDateString() === man.toDateString() ? 'mañana' : 'el ' + d.toLocaleDateString('es-AR', { weekday: 'long' });
+  const dia = d.toDateString() === hoy.toDateString() ? 'hoy' : d.toDateString() === man.toDateString() ? 'mañana' : 'el ' + diaLargo(d);
   return `${dia} antes de las ${hhmm(ms)}`; };
+const isoDia = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+// "mañana", "pasado mañana", "el sábado", "15/11" → AAAA-MM-DD (solo para la entrega).
+function fechaDe(t, ahora = new Date()) {
+  const d = new Date(ahora);
+  if (/pasado manana/.test(t)) { d.setDate(d.getDate() + 2); return isoDia(d); }
+  if (/(^|[^a-z])manana([^a-z]|$)/.test(t) && !/a la manana|por la manana|de la manana/.test(t)) { d.setDate(d.getDate() + 1); return isoDia(d); }
+  const dias = ['domingo', 'lunes', 'martes', 'miercoles', 'jueves', 'viernes', 'sabado'];
+  const i = dias.findIndex(x => new RegExp(`(^|[^a-z])${x}([^a-z]|$)`).test(t));
+  if (i >= 0) { let suma = (i - d.getDay() + 7) % 7; if (suma === 0) suma = 7; d.setDate(d.getDate() + suma); return isoDia(d); }
+  const f = t.match(/(?:^|[^\d])(\d{1,2})\/(\d{1,2})(?!\d)/);
+  if (f) { const x = new Date(d.getFullYear(), Number(f[2]) - 1, Number(f[1])); if (x < ahora) x.setFullYear(x.getFullYear() + 1); return isoDia(x); }
+  return null;
+}
 
 export const FRASE_PERSONA = 'Te paso con una persona del equipo para que lo vea. Ya le dejé todo anotado, así no tenés que repetir nada. 🙌';
 
@@ -70,6 +86,7 @@ function entenderConReglas(texto, estado, ficha) {
   // La tarjeta se puede dictar o cambiar en cualquier momento: "que la tarjeta diga …"
   const dicta = texto.match(/tarjeta (?:que )?(?:diga|dice|ponga|con el texto)[:\s]+["“]?(.{3,200}?)["”]?\s*$/i);
   if (dicta) r.tarjeta_propia = dicta[1].trim().replace(/^./, c => c.toUpperCase());
+  if ((estado.tarjeta || estado.producto) && !dicta) { const f = fechaDe(t); if (f) r.fecha = f; }
   const notas = [/sorpresa/.test(t) && 'Es sorpresa', /timbre|portero/.test(t) && 'Tocar timbre/portero', /no (?:llames|llamar)/.test(t) && 'No llamar antes'].filter(Boolean);
   if (notas.length) r.notas = notas.join('. ');
   r.pregunta_real = /[?]|horario|abren|cierran|donde estan|donde queda|ubicad|como pago|pagar|transfer|alias|cuanto sale el envio|hacen envio|delivery/.test(t);
@@ -86,6 +103,7 @@ function promptEntender(ficha, estado, historial, texto) {
     `Situaciones posibles: ${Object.keys(ficha.situaciones).join(', ')}. "grave" es una macana muy grande (infidelidad, lo echaron de casa).`,
     `Productos:\n${productos}`,
     `Extras: ${ficha.extras.map(e => e.id).join(', ')}.`,
+    `Hoy es ${new Date().toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })} (${isoDia(new Date())}).`,
     `Lo que ya sabemos: ${JSON.stringify(estado)}`,
     `Charla reciente:\n${charla}`,
     `Mensaje nuevo del cliente: """${texto}"""`,
@@ -93,7 +111,7 @@ function promptEntender(ficha, estado, historial, texto) {
     `{"pide_persona":bool,"reclamo":"true si se queja de un pedido (no llegó, llegó mal, demora)","situacion":str|null,"gravedad":1|2|3|null,"para":"quién recibe y relación, ej: 'Caro, mi novia'"|null,`,
     `"contexto":"en 1 línea qué pasó"|null,"eleccion":id de producto|null,"extras":[ids],"eleccion_tarjeta":1|2|3|null,`,
     `"sin_tarjeta":bool,"tarjeta_propia":"texto EXACTO si el cliente dicta o cambia lo que dice la tarjeta (aunque ya haya elegido una)"|null,"direccion":"calle y número"|null,`,
-    `"barrio":str|null,"hora_limite":"HH:MM 24h; si da un rango (entre las 12 y las 15) poné el final del rango"|null,"ventana":"el rango tal cual, ej: entre las 12 y las 15"|null,"estilo":"colores o flores que pide para el ramo, o 'sorprendeme' si deja que elijamos"|null,"notas":"indicaciones para la entrega o el armado que dio el cliente (es sorpresa, tocar timbre, piso, alergias, colores)"|null,"recibe":"nombre de quien recibe"|null,"nombre_cliente":str|null,`,
+    `"barrio":str|null,"hora_limite":"HH:MM 24h; si da un rango (entre las 12 y las 15) poné el final del rango"|null,"ventana":"el rango tal cual, ej: entre las 12 y las 15"|null,"fecha":"AAAA-MM-DD del día de ENTREGA si lo dice (mañana, el sábado, 15/11); null si es hoy o no lo dice. No confundir con fechas que aparecen en el texto de la tarjeta"|null,"estilo":"colores o flores que pide para el ramo, o 'sorprendeme' si deja que elijamos"|null,"notas":"indicaciones para la entrega o el armado que dio el cliente (es sorpresa, tocar timbre, piso, alergias, colores)"|null,"recibe":"nombre de quien recibe"|null,"nombre_cliente":str|null,`,
     `"confirma":bool,"cancela":bool,"catalogo":"true si pide ver el catálogo, fotos o todo lo que hay","pregunta":"si pregunta otra cosa (horario, pago, envío), cuál"|null,`,
     `"frase":"UNA frase corta y humana para arrancar la respuesta, en español rioplatense, con humor si es una macana y seria si es un duelo. Sin precios, sin números, sin prometer nada"}`,
   ].join('\n');
@@ -195,9 +213,23 @@ function opcionesPara(ficha, estado) {
 }
 
 // Arma la hora límite como fecha completa y la corrige si no llegamos.
-function horaLimite(ficha, hhmmTexto, ahora = new Date()) {
+function horaLimite(ficha, hhmmTexto, fecha = null, ventana = null, ahora = new Date()) {
   const [h, m] = hhmmTexto.split(':').map(Number);
   if (!(h >= 0 && h < 24)) return null;
+  // Entrega en otro día ("mañana", "el sábado", "15/11"): se agenda tal cual, si ese día abrimos.
+  if (fecha) {
+    const d = new Date(`${fecha}T00:00:00`);
+    if (!Number.isNaN(d.getTime()) && d.toDateString() !== ahora.toDateString() && d > ahora) {
+      let aviso = '';
+      if (!ficha.horario.dias.includes(d.getDay())) {
+        do d.setDate(d.getDate() + 1); while (!ficha.horario.dias.includes(d.getDay()));
+        aviso = `Ese día no repartimos, así que lo agendo para el ${diaLargo(d)}.`;
+      }
+      const hh = Math.min(Math.max(h, ficha.horario.abre + 1), ficha.horario.cierra);
+      d.setHours(hh, hh === h ? (m || 0) : 0, 0, 0);
+      return { ms: d.getTime(), aviso };
+    }
+  }
   const pedida = new Date(ahora); pedida.setHours(h, m || 0, 0, 0);
   const masTemprano = new Date(ahora.getTime() + 90 * 60000);
   const corte = new Date(ahora); corte.setHours(ficha.horario.ultimo_envio_mismo_dia, 0, 0, 0);
@@ -207,7 +239,14 @@ function horaLimite(ficha, hhmmTexto, ahora = new Date()) {
     const d = new Date(pedida);
     do d.setDate(d.getDate() + 1); while (!ficha.horario.dias.includes(d.getDay()));
     if (d.getHours() < ficha.horario.abre + 2) d.setHours(ficha.horario.abre + 2, 0, 0, 0);
-    return { ms: d.getTime(), aviso: `Hoy ya no llegamos, así que lo programo para ${d.toLocaleDateString('es-AR', { weekday: 'long' })} antes de las ${hhmm(d)}.` };
+    return { ms: d.getTime(), aviso: `Hoy ya no llegamos a esa hora, así que lo agendo para ${cuando(d.getTime())}.` };
+  }
+  if (pedida < masTemprano && ventana) {
+    // Pidió una franja ("entre las 15 y las 17") a la que hoy ya no llegamos: se respeta la franja, mañana.
+    const d = new Date(pedida);
+    do d.setDate(d.getDate() + 1); while (!ficha.horario.dias.includes(d.getDay()));
+    const pronto = new Date(Math.ceil(masTemprano.getTime() / (15 * 60000)) * 15 * 60000);
+    return { ms: d.getTime(), aviso: `Hoy ya no llegamos ${ventana}, así que lo agendo para mañana en esa misma franja. Si lo preferís hoy, podemos llegar a las ${hhmm(pronto)}.` };
   }
   if (pedida < masTemprano) {
     const redondeo = new Date(Math.ceil(masTemprano.getTime() / (15 * 60000)) * 15 * 60000);
@@ -260,7 +299,10 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     if (e.situacion && e.situacion !== estado.situacion) {
       Object.keys(estado).forEach(k => delete estado[k]);
     } else {
-      return { respuestas: [`Tu pedido #${estado.pedido_id} ya está en marcha. Te aviso por acá cuando salga y cuando llegue. 🌷 Si querés mandar otro ramo, contame para quién es.`], estado };
+      if (/pagad|pague|pago|transferi|transferencia|comprobante|abone/.test(normal(texto))) {
+        return { respuestas: [`¡Gracias! Registramos tu aviso de pago del pedido #${estado.pedido_id} 🙌 El equipo lo confirma en breve y te avisamos por acá cada novedad de la entrega.`], pago: true, estado };
+      }
+      return { respuestas: [`Tu pedido #${estado.pedido_id} ya está en marcha y te vamos a avisar por acá cada novedad. ¡Gracias por elegirnos! No dudes en volver a contar con nosotros 🌷`], estado };
     }
   }
 
@@ -300,8 +342,10 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     if (e.recibe) estado.recibe = e.recibe;
     if (e.ventana) estado.ventana = e.ventana;
     if (e.notas && !(estado.notas || '').includes(e.notas)) estado.notas = [estado.notas, e.notas].filter(Boolean).join('. ');
-    if (e.hora_limite) {
-      const h = horaLimite(ficha, e.hora_limite);
+    if (e.fecha) estado.fecha = e.fecha;
+    if (e.hora_limite) estado.hora_hhmm = e.hora_limite;
+    if ((e.hora_limite || e.fecha) && estado.hora_hhmm) {
+      const h = horaLimite(ficha, estado.hora_hhmm, estado.fecha, estado.ventana);
       if (h) { estado.hora_limite = h.ms; if (h.aviso) decir(h.aviso); }
     }
   }
@@ -332,9 +376,10 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     estado.opciones = ops.map(p => p.id);
     const serio = ficha.situaciones[estado.situacion].tono === 'serio';
     // En un duelo la apertura es siempre fija y sobria: no se arriesga una frase de la IA.
-    decir(serio ? 'Lo siento mucho. Te ayudo a que llegue algo lindo y a tiempo.' : (frase || 'Tranqui, esto tiene arreglo. 🌹'));
+    const tono = ficha.situaciones[estado.situacion].tono;
+    decir(serio ? 'Lo siento mucho. Te ayudo a que llegue algo lindo y a tiempo.' : (frase || (tono === 'calido' ? '¡Qué lindo! Armemos algo especial 🌸' : 'Tranqui, esto tiene arreglo. 🌹')));
     decir([
-      serio ? 'Te sugiero estas opciones:' : 'Según el tamaño de la macana, te recomiendo:',
+      serio ? 'Te sugiero estas opciones:' : tono === 'calido' ? 'Te recomiendo estas opciones:' : 'Según el tamaño de la macana, te recomiendo:',
       ...ops.map((p, i) => `*${i + 1}.* ${p.nombre} — ${p.detalle} — *${pesos(p.precio)}*`),
       '',
       serio ? 'Tocá el que prefieras.' : `Tocá el que te guste. Si querés sumar ${ficha.extras.map(x => x.nombre.toLowerCase()).join(', ')}, escribilo.`,
@@ -378,7 +423,7 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
   const falta = [];
   if (!estado.direccion) falta.push('la dirección con el barrio');
   if (!estado.recibe) falta.push('el nombre de quien recibe');
-  if (!estado.hora_limite) falta.push('antes de qué hora tiene que llegar');
+  if (!estado.hora_limite) falta.push(estado.fecha ? 'antes de qué hora tiene que llegar' : 'qué día y antes de qué hora tiene que llegar');
   if (falta.length) {
     // Nunca repetir la misma pregunta como un loro: la segunda vez se pide con un ejemplo,
     // la tercera pasa a una persona con todo anotado.
@@ -391,9 +436,13 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     if (estado.repreguntas >= 2) {
       return { respuestas: [`Perdón, me estoy enredando 🙏 ${FRASE_PERSONA}`], persona: 'Flora no logró entender un dato de la entrega', estado };
     }
-    if (falta.length === 3 || (!teniaTarjeta && estado.tarjeta)) decir('¡Tarjeta lista! ✍️ Ahora la entrega.');
+    if (falta.length === 3 || (!teniaTarjeta && estado.tarjeta)) {
+      decir(eventoActivo() && estado.estilo
+        ? '¡Tarjeta lista! ✍️ Estoy preparando la vista previa de tu arreglo, te la mando en unos segundos. Mientras tanto, seguimos con la entrega.'
+        : '¡Tarjeta lista! ✍️ Ahora la entrega.');
+    }
     else if (anotado.length && !tarjetaCambiada) decir(`Anotado ✅ ${anotado.join(' · ')}.`);
-    const ejemplo = { 'la dirección con el barrio': 'Mendoza 1500, Echesortu', 'el nombre de quien recibe': 'recibe Julieta', 'antes de qué hora tiene que llegar': 'antes de las 15' };
+    const ejemplo = { 'la dirección con el barrio': 'Mendoza 1500, Echesortu', 'el nombre de quien recibe': 'recibe Julieta', 'antes de qué hora tiene que llegar': 'antes de las 15', 'qué día y antes de qué hora tiene que llegar': 'mañana antes de las 15' };
     decir(estado.repreguntas === 1
       ? `Me falta ${falta.join(', ').replace(/, ([^,]*)$/, ' y $1')}. Escribilo así, por ejemplo: "${falta.map(f => ejemplo[f]).join(', ')}".`
       : `Pasame ${falta.join(', ').replace(/, ([^,]*)$/, ' y $1')}.`);

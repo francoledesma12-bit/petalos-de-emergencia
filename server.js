@@ -24,6 +24,10 @@ const WA_NUMERO = process.env.WA_NUMERO || null;
 const PUBLICO = fileURLToPath(new URL('./public/', import.meta.url));
 const FOTOS = join(dirname(process.env.DB_RUTA || './datos/petalos.db'), 'fotos'); // ramos dibujados por la IA del evento
 
+const isoDe = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const paraReparto = ({ id, estado, hora_limite, datos: d }) => ({ id, estado, hora_limite,
+  datos: { recibe: d.recibe, direccion: d.direccion, zona: d.zona, producto: d.producto, notas: d.notas ?? null, ventana: d.ventana ?? null,
+    telefono: d.telefono ?? null, lat: d.lat ?? null, lng: d.lng ?? null, imagen: d.imagen ?? null } });
 let posicionRepartidor = null; // { lat, lng, en } — la manda el celular del repartidor
 
 // ---------- Tiempo real (panel) ----------
@@ -88,6 +92,11 @@ async function procesar(canal, chatId, nombre, texto) {
     c.estado = r.estado;
     const dichas = [...r.respuestas];
 
+    if (r.pago && c.estado.pedido_id) {
+      datos.sumarDatos(c.estado.pedido_id, { pago_informado: Date.now() });
+      avisarDueno(`💳 *Pedido #${c.estado.pedido_id}* · ${quien(c)} avisa que ya pagó. Revisá la transferencia.`, c);
+      avisar('tablero');
+    }
     if (r.persona) {
       c.atiende = 'persona';
       c.derivada_en = Date.now();
@@ -101,6 +110,8 @@ async function procesar(canal, chatId, nombre, texto) {
     }
     if (r.pedido) {
       r.pedido.datos.imagen = c.estado.imagen || null;
+      // Si la vista previa no llegó (por ejemplo, el servidor se reinició mientras se dibujaba), se pide de nuevo.
+      if (eventoActivo() && !c.estado.imagen && c.estado.estilo && !dibujando.has(c.id)) setTimeout(() => dibujarPrevia(c.id), 500);
       r.pedido.datos.estilo = c.estado.estilo || null;
       r.pedido.datos.rescatada = Boolean(c.estado.seguimiento_enviado);
       r.pedido.datos.cliente = r.pedido.datos.cliente || c.nombre || null;
@@ -124,7 +135,7 @@ async function procesar(canal, chatId, nombre, texto) {
     if (eventoActivo() && c.estado.estilo && c.estado.tarjeta && !c.estado.pedido_id && c.estado.imagen_tarjeta !== pedidoDibujo && (c.estado.dibujos || 0) < 3) {
       c.estado.imagen_tarjeta = pedidoDibujo; // si cambia ramo, colores, tarjeta o extras, se vuelve a dibujar
       c.estado.dibujos = (c.estado.dibujos || 0) + 1;
-      dibujarPrevia(c.id);
+      setImmediate(() => dibujarPrevia(c.id)); // después de guardar el estado
     }
     datos.guardarEstado(c);
     const botones = r.pedido ? [] : (r.botones || []);
@@ -166,7 +177,10 @@ function tomaPersona({ chatId, texto }) {
 // WhatsApp: junta los mensajes que llegan seguidos (la gente escribe en partes).
 const esperando = new Map();
 // Con la API del evento: se dibuja el ramo (colores + tarjeta) y se le manda al cliente antes de confirmar.
+const dibujando = new Set(); // charlas con una vista previa en curso
 function dibujarPrevia(charlaId) {
+  if (dibujando.has(charlaId)) return;
+  dibujando.add(charlaId);
   const c0 = datos.charlaPorId(charlaId);
   const prod = ficha.productos.find(x => x.id === c0.estado.producto);
   const extras = (c0.estado.extras || []).map(id => ficha.extras.find(e => e.id === id)?.nombre).filter(Boolean);
@@ -184,7 +198,8 @@ ${url}`);
       avisar('mensaje', { charla_id: c.id, quien: 'aviso', texto: url });
       avisar('tablero');
     }))
-    .catch(e => console.error('[imagen]', e.message));
+    .catch(e => console.error('[imagen]', e.message))
+    .finally(() => dibujando.delete(charlaId));
 }
 
 function recibirWhatsApp(m) {
@@ -388,12 +403,29 @@ const servidor = http.createServer(async (req, res) => {
         return json(res, 200, { pedidos });
       }
       if (req.method === 'GET' && ruta === '/api/reparto') {
+        // La ruta es la de UN día (hoy por defecto; ?dia=AAAA-MM-DD). Lo atrasado de días anteriores entra hoy.
+        const dia = url.searchParams.get('dia') || isoDe(new Date());
+        const esHoy = dia === isoDe(new Date());
         const pedidos = datos.pedidosEn(NEGOCIO, ['listo', 'en_camino'])
-          .map(({ id, estado, hora_limite, datos: d }) => ({ id, estado, hora_limite,
-            datos: { recibe: d.recibe, direccion: d.direccion, zona: d.zona, producto: d.producto, notas: d.notas ?? null, ventana: d.ventana ?? null, telefono: d.telefono ?? null, lat: d.lat ?? null, lng: d.lng ?? null } }));
+          .filter(p => { const d = isoDe(new Date(p.hora_limite ?? p.creado_en)); return d === dia || (esHoy && d < dia); })
+          .map(paraReparto);
         const ruta_ = await rutaDeReparto(ficha, pedidos);
         pedidos.sort((a, b) => ruta_.orden.indexOf(a.id) - ruta_.orden.indexOf(b.id));
-        return json(res, 200, { ruta: ruta_, pedidos, local: { lat: ficha.local_lat, lng: ficha.local_lng, direccion: ficha.direccion_local }, repartidor: posicionRepartidor });
+        return json(res, 200, { dia, ruta: ruta_, pedidos, local: { lat: ficha.local_lat, lng: ficha.local_lng, direccion: ficha.direccion_local }, repartidor: posicionRepartidor });
+      }
+      if (req.method === 'GET' && ruta === '/api/calendario') {
+        // Calendario de entregas: los próximos días con todo lo agendado (cualquier estado menos cancelado).
+        const cuantos = Math.min(31, Number(url.searchParams.get('dias') || 14));
+        const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
+        const todos = datos.pedidosEn(NEGOCIO, ['nuevo', 'preparando', 'listo', 'en_camino', 'entregado']);
+        const dias = Array.from({ length: cuantos }, (_, i) => {
+          const d = new Date(hoy); d.setDate(d.getDate() + i);
+          const fecha = isoDe(d);
+          const pedidos = todos.filter(p => isoDe(new Date(p.hora_limite ?? p.creado_en)) === fecha).map(paraReparto);
+          return { fecha, etiqueta: i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'numeric' }),
+            abre: ficha.horario.dias.includes(d.getDay()), cantidad: pedidos.length, pendientes: pedidos.filter(p => p.estado !== 'entregado').length, pedidos };
+        });
+        return json(res, 200, { dias });
       }
       if (req.method === 'POST' && ruta === '/api/reparto/posicion') {
         if (rol !== 'reparto' && rol !== 'dueno') return json(res, 403, { error: 'No permitido.' });
