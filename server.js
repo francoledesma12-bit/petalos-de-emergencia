@@ -422,7 +422,7 @@ const servidor = http.createServer(async (req, res) => {
           const d = new Date(hoy); d.setDate(d.getDate() + i);
           const fecha = isoDe(d);
           const pedidos = todos.filter(p => isoDe(new Date(p.hora_limite ?? p.creado_en)) === fecha).map(paraReparto);
-          return { fecha, etiqueta: i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : d.toLocaleDateString('es-AR', { weekday: 'long', day: 'numeric', month: 'numeric' }),
+          return { fecha, etiqueta: i === 0 ? 'Hoy' : i === 1 ? 'Mañana' : `${d.toLocaleDateString('es-AR', { weekday: 'long' })} ${d.getDate()}/${d.getMonth() + 1}`,
             abre: ficha.horario.dias.includes(d.getDay()), cantidad: pedidos.length, pendientes: pedidos.filter(p => p.estado !== 'entregado').length, pedidos };
         });
         return json(res, 200, { dias });
