@@ -105,3 +105,14 @@ Trabajo individual con dos asistentes de IA coordinados: **Claude Code** (servid
 - El **pago** queda "informado" por el cliente, no verificado (no hay pasarela conectada).
 - La florería es **ficticia**, creada para la hackatón.
 - El asistente de **llamada por voz** orienta y deriva al chat o a WhatsApp; no registra pedidos.
+
+---
+
+## 9. Infraestructura en DonWeb
+- **Cloud Server DonWeb** "Hackaton Donweb Day 2026" · **ID 6577528** · 2 vCPU / 4 GB RAM · Ubuntu 24.04 LTS (imagen con Coolify) · IP 201.32.132.99.
+- **Dominio:** `petalos.hackaton.somosandromeda.store` (DNS en Hostinger: `hackaton` y `*.hackaton` apuntan al server). El dominio .com.ar del evento no llegó.
+- **App:** contenedor Docker (Node.js 24) con reinicio automático, detrás del proxy **Traefik de Coolify**, HTTPS automático con Let's Encrypt y redirección http → https.
+- **Datos:** SQLite en un volumen persistente. Las claves de las APIs viven solo en el `.env` del servidor.
+- **Publicación:** se empaqueta el código, se sube por SSH y `desplegar.sh` reconstruye la imagen y reinicia el contenedor en segundos.
+- **Coolify:** panel en `panel.hackaton.somosandromeda.store`, conectado a GitHub (publicación automática con push probada con una plantilla base).
+- **Seguridad agregada:** SSH solo con llave y en puerto no estándar, fail2ban para Ubuntu 24.04, actualizaciones de seguridad automáticas, ajustes de red del sistema, respaldo de la configuración. En la app: límites de mensajes por sesión y por red, claves por rol en los paneles.
