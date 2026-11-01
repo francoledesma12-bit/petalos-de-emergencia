@@ -323,3 +323,4 @@ Para cerrar de verdad: desplegar `/catalogo` e imágenes en DonWeb y comprobar p
   y confirma el WhatsApp de quien recibe → `datos.telefono_recibe`; se envía imagen + dedicatoria al confirmar (o al "entregado" si
   es sorpresa); `datos.regalo_enviado` (fecha) evita doble envío. El pago sigue siendo "informado" (`datos.pago_informado`), no verificado.
   Claude (Opus 5.5) en producción: `ia:true`, llamadas reales verificadas varias veces.
+- Claude 17:38: AUDIO → solo audio (sin texto) y versión HABLADA corta (src/hablado.js: Claude la reescribe en 1-2 oraciones, una pregunta, sin emojis; el código controla que no cambie números/precios; respaldo por reglas). El texto completo queda guardado para el panel.

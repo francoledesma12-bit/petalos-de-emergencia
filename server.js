@@ -14,6 +14,7 @@ import { rutaDeReparto } from './src/reparto.js';
 import { ubicar } from './src/mapa.js';
 import { dibujarRamo, dibujarAgradecimiento, pasarATexto, eventoActivo, filaDeImagenes } from './src/evento.js';
 import { iaActiva } from './src/ia.js';
+import { versionHablada } from './src/hablado.js';
 
 const PUERTO = Number(process.env.PORT || 3000);
 const NEGOCIO = process.env.NEGOCIO || 'petalos';
@@ -192,7 +193,7 @@ async function procesar(canal, chatId, nombre, texto, responderConAudio = false)
         const respuesta = dichas.join('\n\n');
         // Si el cliente habló por audio, Flora contesta SOLO con audio (el texto queda guardado para el panel).
         // Si la voz falla, va el texto, para que nunca quede sin respuesta.
-        const archivo = responderConAudio && vozActiva() && SITIO ? await sintetizar(respuesta, FOTOS) : null;
+        const archivo = responderConAudio && vozActiva() && SITIO ? await sintetizar(await versionHablada(respuesta, historial), FOTOS) : null;
         if (archivo && await enviarAudio(chatId, `${SITIO}/fotos/${archivo}`)) {
           datos.anotar(c.id, 'flora', respuesta);
           avisar('mensaje', { charla_id: c.id, quien: 'flora', texto: respuesta });
