@@ -128,7 +128,7 @@ async function escribirTarjetas(ficha, estado) {
     `Tonos, en este orden: ${nombres.join(', ')}. Español rioplatense, máximo 160 caracteres cada una, sin firmas.`,
     tono === 'serio' ? 'Es un duelo: nada de humor ni emojis.' : 'Podés usar un emoji como mucho.',
     `JSON: {"tarjetas":["...","...","..."]}`,
-  ].join('\n'), { maxTokens: 400 });
+  ].join('\n'));
   const lista = Array.isArray(ia?.tarjetas) ? ia.tarjetas.filter(t => typeof t === 'string' && t.length <= 220).slice(0, 3) : [];
   const textos = (lista.length === 3 ? lista : tarjetasDeRespaldo(tono, estado.para)).map(t => t.charAt(0).toUpperCase() + t.slice(1));
   return { nombres, textos };

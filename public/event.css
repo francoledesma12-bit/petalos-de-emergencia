@@ -1,0 +1,5 @@
+.event-ribbon{display:inline-flex;align-items:center;gap:13px;background:#263a30;color:#f8f4ee;border-radius:12px;padding:11px 17px;margin-bottom:27px;box-shadow:0 9px 24px #263a301c}
+.event-symbol{font:normal 26px Georgia,serif;letter-spacing:-.16em;color:#f4bac1;padding-right:8px}
+.event-ribbon strong{display:block;font:normal 18px Georgia,serif;line-height:1.1}
+.event-ribbon small{display:block;margin-top:4px;font-size:10px;font-weight:800;letter-spacing:.08em;color:#d7e2d6;text-transform:uppercase}
+@media(max-width:560px){.event-ribbon{padding:10px 12px}.event-ribbon strong{font-size:16px}}
