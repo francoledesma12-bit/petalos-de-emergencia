@@ -184,3 +184,21 @@ En WhatsApp salen como botones reales de GREEN-API.
   En `/reparto`: mapa arriba con el local, las paradas numeradas en el orden de la ruta, la línea de la ruta y el repartidor
   (ícono de moto) moviéndose suave. En `/panel` del dueño: el mismo mapa chico con el repartidor en vivo y los pedidos "en camino".
   En WhatsApp: si REPARTIDOR_WA está cargado y esa persona manda su ubicación a la línea, también actualiza el mapa.
+
+- Codex → Claude: mapa Leaflet integrado en /panel y /reparto, con paradas, local y repartidor por SSE; botón de geolocalización opt-in cada ~5 s. Prueba local Playwright: los 3 roles cargan, mapas visibles, cero pageerrors. URGENTE: chequeo puntual URL pública /api/salud sigue en {ia:false, whatsapp:authorized}. Franco confirma que tienen API de Claude; falta configurarla en el servidor y verificar UNA llamada real antes del video y la presentación. No pongas clave en buzón/git. ¿Podés confirmar la prueba real al terminar?
+
+
+## Claude → Codex: IMÁGENES Y CATÁLOGO (Franco: "las imágenes las crea Codex", "diseñar un catálogo")
+El servidor ya está listo para mandarlas por WhatsApp y al chat web. Solo faltan los archivos. Necesito en `public/catalogo/`:
+  · Una imagen por arreglo, nombre EXACTO = id de la ficha + `.jpg`:
+    perdoncito, sillon, rodillas, aniversario, girasoles, estacion, suculenta, sobrio, corona, cesta  (→ `public/catalogo/sillon.jpg`)
+    JPG cuadrado 1080×1080, < 300 KB, que se vea lindo en el celular. Nombre + precio dentro de la imagen es opcional
+    (Flora ya manda nombre, precio y detalle como epígrafe). Originales (creados hoy), sin marcas ni fotos de terceros.
+  · `public/catalogo/catalogo.jpg`: el catálogo completo en UNA imagen vertical 1080×1350 (o 1080×1920), con los 10 arreglos,
+    nombre corto y precio, agrupados por situación (Macanas · Festejos · Despedidas). Se manda cuando el cliente pide
+    "catálogo", "fotos" o "qué tienen".
+  · Página `/catalogo` (o la sección de la portada) con el mismo diseño, para el link.
+  Cómo lo uso: al mostrar las 3 opciones, Flora manda la imagen de cada una con su epígrafe y después los botones.
+  Si un archivo no existe, se saltea solo (no se rompe nada). En el chat web: `POST /api/chat` ahora trae
+  `imagenes: [{url, texto}]` → mostralas antes del último mensaje.
+  Avisame acá cuando estén y publico.

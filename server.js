@@ -8,7 +8,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as datos from './src/db.js';
 import { atender, resumenParaPersona, textoPedidoCreado, textoCambioEstado } from './src/cerebro.js';
-import { enviar, enviarConAcciones, escribiendo, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
+import { enviar, enviarConAcciones, escribiendo, imagen, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
 import { rutaDeReparto } from './src/reparto.js';
 import { ubicar } from './src/mapa.js';
 import { iaActiva } from './src/ia.js';
@@ -50,6 +50,7 @@ async function decir(c, texto, quien = 'flora', botones = []) {
 // Avisos al celular del dueño (como el aviso al vendedor de Rosario Exclusivos).
 const DUENO = chatDe(process.env.DUENO_WA);
 const PANEL_URL = process.env.PANEL_URL || '';
+const SITIO = process.env.SITIO_URL || (PANEL_URL ? new URL(PANEL_URL).origin : ''); // para mandar imágenes por WhatsApp
 // Cada aviso al dueño lleva botones para abrir el panel y llamar al cliente.
 function avisarDueno(texto, c) {
   if (!DUENO) return Promise.resolve(false);
@@ -113,9 +114,18 @@ async function procesar(canal, chatId, nombre, texto) {
     }
     datos.guardarEstado(c);
     const botones = r.pedido ? [] : (r.botones || []);
-    for (const [i, t] of dichas.entries()) await decir(c, t, 'flora', i === dichas.length - 1 ? botones : []);
+    // Solo las imágenes que ya existen en public/ (si falta alguna, la charla sigue igual).
+    const imagenes = (r.imagenes || []).filter(im => existsSync(join(PUBLICO, im.archivo)))
+      .map(im => ({ url: `/${im.archivo}`, texto: im.texto }));
+    for (const [i, t] of dichas.entries()) {
+      const ultimo = i === dichas.length - 1;
+      if (ultimo && canal === 'whatsapp' && SITIO) {
+        for (const im of imagenes) await imagen(chatId, SITIO + im.url, im.texto);
+      }
+      await decir(c, t, 'flora', ultimo ? botones : []);
+    }
     if (r.persona || r.pedido) avisar('tablero');
-    return { respuestas: dichas, botones };
+    return { respuestas: dichas, botones, imagenes };
   });
 }
 
@@ -293,8 +303,8 @@ const servidor = http.createServer(async (req, res) => {
       const sesion = String(b.sesion || '').slice(0, 64);
       const texto = String(b.texto || '').trim().slice(0, 1000);
       if (!/^[\w-]{8,64}$/.test(sesion) || !texto) return json(res, 400, { error: 'Falta el mensaje.' });
-      const { respuestas, botones } = await procesar('web', sesion, 'Visitante web', texto);
-      return json(res, 200, { respuestas, botones });
+      const { respuestas, botones, imagenes } = await procesar('web', sesion, 'Visitante web', texto);
+      return json(res, 200, { respuestas, botones, imagenes: imagenes || [] });
     }
     // El chat web busca acá lo que le contestó una persona desde el panel.
     if (req.method === 'GET' && ruta.startsWith('/api/chat/')) {

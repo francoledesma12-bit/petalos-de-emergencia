@@ -46,6 +46,12 @@ export async function enviarConAcciones(chatId, texto, acciones) {
   return ok || llamar('sendMessage', { chatId, message: texto });
 }
 
+// Imagen con epígrafe (el archivo tiene que estar publicado en internet).
+export function imagen(chatId, url, epigrafe) {
+  if (!waActivo()) return Promise.resolve(false);
+  return llamar('sendFileByUrl', { chatId, urlFile: url, fileName: url.split('/').pop(), caption: epigrafe });
+}
+
 // "Escribiendo…" mientras Flora piensa.
 export function escribiendo(chatId, ms = 3000) {
   if (waActivo()) llamar('sendTyping', { chatId, typingTime: Math.min(20000, Math.max(1000, ms)) });

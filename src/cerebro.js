@@ -30,6 +30,7 @@ function entenderConReglas(texto, estado, ficha) {
   const r = {};
   if (/persona|humano|alguien de verdad|encargad|hablar con|atencion al cliente/.test(t)) r.pide_persona = true;
   if (/no llego|nunca llego|todavia no llega|llego mal|llego feo|llegaron feas|marchit|reclamo|me estafaron|estan rotas|aplastad/.test(t)) r.reclamo = true;
+  if (/catalogo|ver todo|que tenes|que tienen|que venden|fotos/.test(t)) r.catalogo = true;
   if (/falleci|murio|velorio|sepelio|pesame|condolencia|despedida|qepd/.test(t)) r.situacion = 'condolencias';
   else if (/cuerno|me echo|me dejo|me fue infiel|terrible|re grave|la cague mal|macana grande/.test(t)) r.situacion = 'grave';
   else if (/olvid/.test(t)) r.situacion = 'olvido';
@@ -81,7 +82,7 @@ function promptEntender(ficha, estado, historial, texto) {
     `"contexto":"en 1 línea qué pasó"|null,"eleccion":id de producto|null,"extras":[ids],"eleccion_tarjeta":1|2|3|null,`,
     `"sin_tarjeta":bool,"tarjeta_propia":"texto si el cliente dictó su tarjeta"|null,"direccion":"calle y número"|null,`,
     `"barrio":str|null,"hora_limite":"HH:MM 24h"|null,"recibe":"nombre de quien recibe"|null,"nombre_cliente":str|null,`,
-    `"confirma":bool,"cancela":bool,"pregunta":"si pregunta otra cosa (horario, pago, envío), cuál"|null,`,
+    `"confirma":bool,"cancela":bool,"catalogo":"true si pide ver el catálogo, fotos o todo lo que hay","pregunta":"si pregunta otra cosa (horario, pago, envío), cuál"|null,`,
     `"frase":"UNA frase corta y humana para arrancar la respuesta, en español rioplatense, con humor si es una macana y seria si es un duelo. Sin precios, sin números, sin prometer nada"}`,
   ].join('\n');
 }
@@ -268,6 +269,11 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
     }
   }
 
+  if (e.catalogo && !estado.producto) {
+    return { respuestas: [`Este es nuestro catálogo 🌸 ${ficha.productos.length} arreglos para cada macana. Contame qué pasó y te digo cuál conviene.`],
+      imagenes: [{ archivo: 'catalogo/catalogo.jpg', texto: `Catálogo ${ficha.nombre}` }],
+      botones: [{ id: 'olvido', texto: 'Me olvidé una fecha' }, { id: 'pelea', texto: 'Nos peleamos' }, { id: 'cumple', texto: 'Es un cumple' }], estado };
+  }
   if (e.pregunta) decir(respuestaPregunta(ficha));
 
   // Paso 1: qué pasó.
@@ -295,7 +301,9 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
       '',
       serio ? 'Tocá el que prefieras.' : `Tocá el que te guste. Si querés sumar ${ficha.extras.map(x => x.nombre.toLowerCase()).join(', ')}, escribilo.`,
     ].join('\n'));
-    return { respuestas: out, estado, botones: ops.map((p, i) => ({ id: String(i + 1), texto: `${i + 1}. ${p.corto} · ${pesos(p.precio)}`.slice(0, 25) })) };
+    return { respuestas: out, estado,
+      imagenes: ops.map((p, i) => ({ archivo: `catalogo/${p.id}.jpg`, texto: `*${i + 1}. ${p.nombre}* · ${pesos(p.precio)}\n${p.detalle}` })),
+      botones: ops.map((p, i) => ({ id: String(i + 1), texto: `${i + 1}. ${p.corto} · ${pesos(p.precio)}`.slice(0, 25) })) };
   }
 
   // Paso 3: tarjeta.
