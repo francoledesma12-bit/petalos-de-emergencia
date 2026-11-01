@@ -359,3 +359,27 @@ con los productos/precios de `fichas/petalos.json`, y que para cerrar pedidos in
 Sumá también un toque "zarpado" a la portada si te da el tiempo (QR grande, frase del problema que resolvemos), sin romper nada.
 ⏱️ AVISÁ ACÁ A LAS 18:00 COMO MUCHO con "LISTO PARA PUBLICAR". Yo publico una sola vez. Si no llega, se queda lo que está.
 Claude está armando en Sitio Simple la página "Qué hicimos" que linkea a la app.
+- Codex 17:46: VIDEO TERMINADO. MP4 con voz ElevenLabs elegida, 9 escenas y 105,12 s, H.264 1280x720 + AAC. Está en `C:\Users\Lenovo\Documents\Codex\2026-11-01\yo-le-voy-a-dar-a\outputs\Petalos-de-Emergencia-Hackaton-DonWeb.mp4`; locución separada `Petalos-de-Emergencia-locucion.mp3` y guion `Petalos-de-Emergencia-guion.md` en la misma carpeta. Revisé un cuadro del MP4: imágenes IA reales y DonWeb visible. La escena 08 menciona audio de WhatsApp: confirmar prueba real de ida/vuelta antes de proyectarlo como función verificada. Sitio Simple no aparece en este corte; se puede sumar en una revisión si Franco lo pide.
+
+## 🔁 TRASPASO Claude → Codex (17:52, Franco se quedó sin tokens de Claude). TODO QUEDA EN TUS MANOS.
+ESTADO (todo publicado y probado): app en https://petalos.hackaton.somosandromeda.store (Claude ia:true, API evento ia_evento:true,
+WhatsApp authorized). Sitio Simple publicado: https://petalos-de-emergencia.misitiosimple.online (Bordeaux, WhatsApp cargado).
+`node probar.js <url>` = todas las pruebas OK (con TALLER_CLAVE/REPARTO_CLAVE del .env).
+
+CÓMO PUBLICAR (desde la carpeta petalos/, en Git Bash; la llave ya está en la PC):
+  S="ssh -i C:/Users/Lenovo/.ssh/donweb_hackaton -p 5515 root@201.32.132.99"
+  tar --exclude=datos --exclude=.git --exclude=node_modules --exclude=.env --exclude=video --exclude=work -czf - . | $S 'rm -rf /root/petalos/app/* && tar xzf - -C /root/petalos/app && /root/petalos/desplegar.sh'
+  Si cambiás .env: $S 'cat > /root/petalos/.env && chmod 600 /root/petalos/.env' < .env
+  Panel en cero antes de la demo: $S /root/petalos/limpiar.sh
+  ⚠️ Publicar reinicia el servidor (~5 s) y corta imágenes en curso: no publicar durante la demo.
+
+PENDIENTE:
+ 1. Sitio Simple: página "Qué hicimos" — el diálogo "Crear página → Generar con IA" (tono Profesional) quedó con el texto cargado
+    pero el botón CREAR PÁGINA no respondió. Reintentar desde app.sitiosimple.com (entrar por micuenta.donweb.com → SitioSimple →
+    Gestionar → Acceder). Agregar botón/link "Probá la app" → https://petalos.hackaton.somosandromeda.store. Franco quiere también
+    poder sumar el VIDEO después (Sitio Simple admite video de YouTube/Vimeo en sus bloques del editor; subir el video y pegar el link).
+    Ojo: el email personal de Franco se muestra en el sitio (Información de contacto → destildar "Mostrar mi email").
+ 2. Botón "📞 Llamar a Flora" con ElevenLabs en public/index.html (ver pedido 17:45 arriba). El agente NO crea pedidos: que derive a WhatsApp.
+ 3. Franco: "usamos somosandromeda.store para la tienda de verdad" → la app YA está en un subdominio de somosandromeda.store
+    (petalos.hackaton.). NO tocar el sitio principal somosandromeda.store (vive en otro servidor, el VPS de Andromeda).
+ 4. Video Astro con el mensaje del bloque "MENSAJE DEL VIDEO".
