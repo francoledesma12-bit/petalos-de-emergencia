@@ -120,8 +120,9 @@ async function procesar(canal, chatId, nombre, texto) {
       ].join('\n'), c);
     }
     // Con colores y tarjeta elegidos, la IA del evento dibuja el ramo mientras el cliente sigue.
-    if (eventoActivo() && c.estado.estilo && c.estado.tarjeta && c.estado.imagen_tarjeta !== c.estado.tarjeta && (c.estado.dibujos || 0) < 2) {
-      c.estado.imagen_tarjeta = c.estado.tarjeta;
+    const pedidoDibujo = [c.estado.producto, c.estado.estilo, c.estado.tarjeta, (c.estado.extras || []).join(',')].join('|');
+    if (eventoActivo() && c.estado.estilo && c.estado.tarjeta && !c.estado.pedido_id && c.estado.imagen_tarjeta !== pedidoDibujo && (c.estado.dibujos || 0) < 3) {
+      c.estado.imagen_tarjeta = pedidoDibujo; // si cambia ramo, colores, tarjeta o extras, se vuelve a dibujar
       c.estado.dibujos = (c.estado.dibujos || 0) + 1;
       dibujarPrevia(c.id);
     }

@@ -17,8 +17,9 @@ export async function dibujarRamo({ id, producto, detalle, extras = [], tarjeta,
   const tamano = /24|corona|caja/i.test(detalle) ? 'grande y abundante' : /6 |suculenta|cesta/i.test(detalle) ? 'chico y delicado' : 'mediano';
   const prompt = [
     `Fotografía de producto, estilo editorial cálido, de un arreglo floral ${tamano} de una florería boutique.`,
-    estilo ? `Las flores y los colores son SOLO estos, como pidió el cliente: ${estilo}.` : `Flores: ${detalle}.`,
-    extras.length ? `Junto al ramo: ${extras.join(', ')}.` : '',
+    `El arreglo es exactamente: ${detalle} (respetá la cantidad, el tipo de flor y el envoltorio).`,
+    estilo ? `El cliente pidió: "${estilo}". Si nombró flores, usá esas flores; si solo nombró colores, mantené el tipo y la cantidad del arreglo pero en esos colores. Que se vea fiel a lo pedido.` : '',
+    extras.length ? `Al lado del ramo, bien visibles: ${extras.join(', ')}.` : '',
     tarjeta && tarjeta !== '(sin tarjeta)'
       ? `Apoyada en el ramo, una tarjeta de papel crema SIN dibujos, solo con este texto escrito a mano en tinta bordó, en español, legible y completo: "${tarjeta}".`
       : '',
