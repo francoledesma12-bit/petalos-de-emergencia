@@ -190,10 +190,14 @@ async function procesar(canal, chatId, nombre, texto, responderConAudio = false)
       if (SITIO) for (const im of imagenes) await imagen(chatId, SITIO + im.url, im.texto);
       if (dichas.length) {
         const respuesta = dichas.join('\n\n');
-        await decir(c, respuesta, 'flora', botones);
-        if (responderConAudio && vozActiva() && SITIO) {
-          const archivo = await sintetizar(respuesta, FOTOS);
-          if (archivo) await enviarAudio(chatId, `${SITIO}/fotos/${archivo}`);
+        // Si el cliente habló por audio, Flora contesta SOLO con audio (el texto queda guardado para el panel).
+        // Si la voz falla, va el texto, para que nunca quede sin respuesta.
+        const archivo = responderConAudio && vozActiva() && SITIO ? await sintetizar(respuesta, FOTOS) : null;
+        if (archivo && await enviarAudio(chatId, `${SITIO}/fotos/${archivo}`)) {
+          datos.anotar(c.id, 'flora', respuesta);
+          avisar('mensaje', { charla_id: c.id, quien: 'flora', texto: respuesta });
+        } else {
+          await decir(c, respuesta, 'flora', botones);
         }
       }
     } else {
@@ -239,7 +243,9 @@ async function regaloAlDestinatario(pedidoId, { aunSinImagen = false } = {}) {
   const tarjeta = p.datos.tarjeta && p.datos.tarjeta !== '(sin tarjeta)' ? `
 
 💌 "${p.datos.tarjeta}"` : '';
-  const pie = p.estado === 'entregado' ? 'Tus flores ya llegaron 🌷' : `Tus flores llegan ${hora(p.hora_limite)}.`;
+  const d = new Date(p.hora_limite), hoy = new Date(), man = new Date(Date.now() + 864e5);
+  const dia = d.toDateString() === hoy.toDateString() ? 'hoy' : d.toDateString() === man.toDateString() ? 'mañana' : `el ${d.toLocaleDateString('es-AR', { weekday: 'long' })} ${d.getDate()}/${d.getMonth() + 1}`;
+  const pie = p.estado === 'entregado' ? 'Tus flores ya llegaron 🌷' : `Tus flores llegan ${dia} antes de las ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}.`;
   const texto = `💐 ¡Hola ${p.datos.recibe}! Alguien especial te envía un regalo de ${ficha.nombre}.${tarjeta}
 
 ${pie}`;
