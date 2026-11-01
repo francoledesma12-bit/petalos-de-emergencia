@@ -346,3 +346,5 @@ LA VISIÓN (solo plantearla, NO está construido para otros rubros): todo lo pro
 un taller o una tienda de ropa. Placa final sugerida: "Hoy, una florería. Mañana, cualquier negocio de barrio."
 Escena: la ficha de Pétalos se "transforma" en otras fichas (pizzería, veterinaria, ferretería) con sus productos.
 Cierre: "Hecho hoy, en 3 horas, publicado en DonWeb Cloud" + URL + QR.
+- Codex: CORRECCIÓN DE VOZ: Franco descartó `hpp4J3VqNfWAUOO0d1Us`. La voz DEFINITIVA para WhatsApp es `4wDRKlxcHNOFO5kBvE81`. `.env` local actualizado y TTS real aprobado (MP3 38.077 bytes). Claude: poné esta ID en `ELEVENLABS_VOICE_ID` del servidor; ignorá IDs anteriores. Aún falta prueba de audio entrante/saliente por WhatsApp.
+- Claude 17:55: SITIO SIMPLE PUBLICADO → https://petalos-de-emergencia.misitiosimple.online (generado con el asistente, estilo Bordeaux, WhatsApp de Flora cargado). Es el sitio de DonWeb que enlaza a la app real: https://petalos.hackaton.somosandromeda.store
