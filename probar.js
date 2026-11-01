@@ -1,28 +1,84 @@
-// Prueba de punta a punta: una charla completa por el chat web y el panel.
+// Pruebas de punta a punta contra el servidor (local o publicado).
 // Uso: node probar.js [direccion]   (por defecto http://localhost:3000)
+// Cada caso es una charla real por el chat web o por un aviso de WhatsApp simulado.
 const BASE = process.argv[2] || 'http://localhost:3000';
-const sesion = 'prueba-' + Date.now();
+const fallas = [];
+const ver = (ok, que) => { console.log(`${ok ? '  ✅' : '  ❌'} ${que}`); if (!ok) fallas.push(que); };
 
-async function decir(texto) {
-  const r = await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sesion, texto }) });
-  const j = await r.json();
-  console.log(`\n🙋 ${texto}`);
-  for (const t of j.respuestas || [j.error]) console.log(`🌹 ${t.replace(/\n/g, '\n   ')}`);
-  return j;
+function cliente() {
+  const sesion = 'prueba-' + Date.now() + '-' + Math.random().toString(36).slice(2, 8);
+  return async texto => {
+    const r = await fetch(`${BASE}/api/chat`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sesion, texto }) });
+    const j = await r.json();
+    console.log(`\n🙋 ${texto}`);
+    for (const t of j.respuestas || [j.error]) console.log(`🌹 ${String(t).replace(/\n/g, '\n   ')}`);
+    return (j.respuestas || []).join('\n');
+  };
 }
-
-await decir('hola');
-await decir('me olvidé del aniversario con Caro y está furiosa');
-await decir('la 2 con bombones');
-await decir('la 2');
-await decir('Bv Oroño 1200, Centro, recibe Carolina, antes de las 19');
-const fin = await decir('sí, dale');
 
 const entrar = await fetch(`${BASE}/api/entrar`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ clave: process.env.PANEL_CLAVE || 'flores' }) });
 const cookie = entrar.headers.get('set-cookie')?.split(';')[0];
-const tablero = await (await fetch(`${BASE}/api/tablero`, { headers: { cookie } })).json();
-const ultimo = tablero.pedidos.at(-1);
-console.log('\n📋 Panel:', tablero.hoy, ultimo && { id: ultimo.id, estado: ultimo.estado, total: ultimo.total, producto: ultimo.datos.producto });
-const ok = fin.respuestas?.some(t => t.includes('confirmado')) && ultimo;
-console.log(ok ? '\n✅ La charla terminó en pedido.' : '\n❌ La charla NO terminó en pedido.');
-process.exitCode = ok ? 0 : 1;
+const panel = async (ruta, cuerpo) => (await fetch(`${BASE}${ruta}`, {
+  method: cuerpo ? 'POST' : 'GET', headers: { cookie, 'Content-Type': 'application/json' }, body: cuerpo && JSON.stringify(cuerpo) })).json();
+
+console.log('\n━━━ 1. Macana: olvido de aniversario, de punta a punta');
+{
+  const d = cliente();
+  await d('hola');
+  ver((await d('me olvidé del aniversario con Caro y está furiosa')).includes('Sillón'), 'recomienda ramos para la macana');
+  ver((await d('la 2 con bombones')).includes('tres tonos'), 'escribe la tarjeta en 3 tonos');
+  await d('la 2');
+  const resumen = await d('Bv Oroño 1200, Centro, recibe Carolina, antes de las 19');
+  ver(resumen.includes('68.500'), 'total calculado con código: $ 68.500');
+  ver((await d('sí, dale')).includes('confirmado'), 'pedido confirmado');
+  const t = await panel('/api/tablero');
+  const p = t.pedidos.at(-1);
+  ver(p?.datos.producto === 'Ramo Dormí en el Sillón' && p.total === 68500, 'el pedido aparece en el panel');
+  const cambio = await panel(`/api/pedidos/${p.id}`, { estado: 'en_camino' });
+  ver(cambio.pedido?.estado === 'en_camino', 'el dueño lo pasa a "en camino"');
+}
+
+console.log('\n━━━ 2. Condolencias: cambia el tono');
+{
+  const d = cliente();
+  await d('hola');
+  const r = await d('falleció el papá de mi mejor amigo, quiero mandar algo al velorio');
+  ver(r.includes('Blanco Sereno') || r.includes('Corona'), 'ofrece arreglos sobrios');
+  ver(!/macana|sillón/i.test(r), 'sin chistes');
+}
+
+console.log('\n━━━ 3. Reclamo: pasa a una persona y la persona contesta desde el panel');
+{
+  const d = cliente();
+  await d('hola');
+  ver((await d('las flores llegaron aplastadas, quiero hacer un reclamo')).includes('persona'), 'avisa que pasa a una persona');
+  ver((await d('mandé foto por mail también')) === '', 'Flora se calla mientras la atiende una persona');
+  const t = await panel('/api/tablero');
+  const a = t.avisos.at(-1);
+  ver(a?.motivo === 'Reclamo' && a.resumen.includes('Agregó'), 'el caso llega al panel con resumen y la actualización');
+  await panel(`/api/charlas/${a.charla_id}/responder`, { texto: 'Hola, soy Marta de la florería. Te mandamos otro ramo hoy sin cargo.' });
+  const c = await panel(`/api/charlas/${a.charla_id}`);
+  ver(c.mensajes.at(-1)?.quien === 'persona', 'la respuesta de la persona queda en la charla');
+  await panel(`/api/charlas/${a.charla_id}/devolver`, {});
+  ver(!(await panel('/api/tablero')).avisos.some(x => x.charla_id === a.charla_id), 'al devolverla a Flora, el caso se cierra');
+}
+
+console.log('\n━━━ 4. WhatsApp: mensaje entrante y alguien que contesta desde el celular');
+{
+  const chatId = `549341${Date.now() % 10000000}@c.us`;
+  const aviso = (typeWebhook, texto) => fetch(`${BASE}/wa/aviso`, { method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...(process.env.WA_AVISO_TOKEN ? { Authorization: `Bearer ${process.env.WA_AVISO_TOKEN}` } : {}) },
+    body: JSON.stringify({ typeWebhook, senderData: { chatId, senderName: 'Prueba' }, messageData: { typeMessage: 'textMessage', textMessageData: { textMessage: texto } } }) });
+  await aviso('incomingMessageReceived', 'hola, me peleé con mi novio');
+  await new Promise(r => setTimeout(r, 3500));
+  await aviso('outgoingMessageReceived', 'Hola! Te atiendo yo, soy Marta');
+  await new Promise(r => setTimeout(r, 800));
+  await aviso('incomingMessageReceived', 'genial, gracias Marta');
+  await new Promise(r => setTimeout(r, 3000));
+  const t = await panel('/api/tablero');
+  ver((await fetch(`${BASE}/wa/aviso`, { method: 'POST', body: '{}' })).status !== 500, 'el aviso de WhatsApp responde');
+  void t;
+}
+
+console.log(fallas.length ? `\n❌ ${fallas.length} prueba(s) fallaron` : '\n✅ Todas las pruebas pasaron');
+process.exitCode = fallas.length ? 1 : 0;

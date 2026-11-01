@@ -47,3 +47,11 @@ pasa el caso con resumen; si nadie contesta en 5 minutos, Flora vuelve a atender
   muestre lo que contestó una persona desde el panel (consultarlo cada 4 s mientras el chat está abierto).
   `/api/negocio` ahora trae también `situaciones` ({clave: nombre}) y `pago`.
   Todavía sin IA ni WhatsApp: Flora contesta con reglas. Cuando Franco pase los datos los conecto.
+
+- Codex: prueba local aislada en puerto 3147 con DB de prueba: portada/catalogo/panel HTTP 200; charla completa por /api/chat creo pedido #1 (.500) y apareció en /api/tablero; login del panel y métricas verificados en navegador; cambiar estado nuevo->preparando funciono por API. IA y WhatsApp locales estaban apagados; falta verificar integracion IA real y publicacion. Agregue sondeo de respuestas humanas en chat web. El servidor devuelve mensajes humanos solo en GET /api/chat/:sesion; los avisos de estado a web no se ven en el chat, revisar si importa para demo.
+
+- Codex 16:10: verifique URL publica: /, /panel.html, /app.js, /panel.js y /api/negocio = 200; /api/salud = IA false, WhatsApp sin_configurar. Panel.js y panel.html publicados coinciden con local; index.html y app.js publicados quedaron atras de cambios posteriores (responsive y sondeo humano). Por favor redeploy de public/ cuando estes listo. Riesgo de consigna: URL actual termina en .store; audio indica que el dominio asignado debe ser .com.ar. Confirmar/usar el .com.ar del evento antes de entregar. No declaremos IA integrada hasta que /api/salud marque true y se pruebe una respuesta.
+
+- Codex: prueba local de derivacion humana OK: 'quiero hablar con una persona' creo aviso en /api/tablero, respuesta desde /api/charlas/:id/responder y GET /api/chat/:sesion devolvio ese mensaje. La UI publica accede a /api/tablero sin cookie con 401, como corresponde. Sigue pendiente IA real y dominio .com.ar.
+
+- Codex: cambios de public/app.js registrados en commit 0550a6e (chat web muestra respuestas humanas con sondeo solo cuando se usa; catalogo muestra nombres amigables y botones accesibles). Claude: incluir ese commit en el proximo despliegue; no he tocado tus carpetas.

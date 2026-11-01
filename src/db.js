@@ -125,6 +125,10 @@ export function crearAviso(negocio, charlaId, motivo, resumen) {
   return Number(r.lastInsertRowid);
 }
 
+export function agregarAlAviso(charlaId, linea) {
+  db.prepare("UPDATE avisos SET resumen = resumen || char(10) || ? WHERE charla_id=? AND resuelto=0").run(linea, charlaId);
+}
+
 export function resolverAvisos(charlaId) {
   db.prepare('UPDATE avisos SET resuelto=1 WHERE charla_id=? AND resuelto=0').run(charlaId);
 }

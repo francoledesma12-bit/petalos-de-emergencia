@@ -48,15 +48,21 @@ function textoDe(m = {}) {
   }
 }
 
-// Convierte el aviso de GREEN-API en { chatId, nombre, texto } o null si no es para atender.
+// Convierte el aviso de GREEN-API en { tipo, chatId, nombre, texto } o null si no hay nada que hacer.
+// tipo 'entrante' = escribió un cliente; 'saliente' = alguien contestó a mano desde el celular de la línea.
 export function leerAviso(aviso) {
-  if (aviso?.typeWebhook !== 'incomingMessageReceived') return null;
+  const tipo = aviso?.typeWebhook === 'incomingMessageReceived' ? 'entrante'
+    : aviso?.typeWebhook === 'outgoingMessageReceived' ? 'saliente' : null;
+  if (!tipo) return null;
   const chatId = aviso.senderData?.chatId || '';
   if (!chatId.endsWith('@c.us')) return null; // grupos y difusiones no se atienden
   const texto = textoDe(aviso.messageData).trim();
   if (!texto) return null;
-  return { chatId, nombre: aviso.senderData?.senderName || aviso.senderData?.chatName || '', texto };
+  return { tipo, chatId, nombre: tipo === 'entrante' ? (aviso.senderData?.senderName || aviso.senderData?.chatName || '') : '', texto };
 }
+
+// Número de WhatsApp (solo dígitos) → chatId de GREEN-API.
+export const chatDe = numero => (numero || '').replace(/\D/g, '') ? `${numero.replace(/\D/g, '')}@c.us` : '';
 
 // Modo "ir a buscar": útil cuando la línea todavía no tiene la dirección del aviso cargada.
 export async function buscarMensajes(alRecibir) {

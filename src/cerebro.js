@@ -18,6 +18,7 @@ function entenderConReglas(texto, estado, ficha) {
   const t = normal(texto);
   const r = {};
   if (/persona|humano|alguien de verdad|encargad|hablar con|atencion al cliente/.test(t)) r.pide_persona = true;
+  if (/no llego|nunca llego|todavia no llega|llego mal|llego feo|llegaron feas|marchit|reclamo|me estafaron|estan rotas|aplastad/.test(t)) r.reclamo = true;
   if (/falleci|murio|velorio|sepelio|pesame|condolencia|despedida|qepd/.test(t)) r.situacion = 'condolencias';
   else if (/cuerno|me echo|me dejo|me fue infiel|terrible|re grave|la cague mal|macana grande/.test(t)) r.situacion = 'grave';
   else if (/olvid/.test(t)) r.situacion = 'olvido';
@@ -63,7 +64,7 @@ function promptEntender(ficha, estado, historial, texto) {
     `Charla reciente:\n${charla}`,
     `Mensaje nuevo del cliente: """${texto}"""`,
     `Devolvé SOLO este JSON (null si no aparece; no inventes):`,
-    `{"pide_persona":bool,"situacion":str|null,"gravedad":1|2|3|null,"para":"quién recibe y relación, ej: 'Caro, mi novia'"|null,`,
+    `{"pide_persona":bool,"reclamo":"true si se queja de un pedido (no llegó, llegó mal, demora)","situacion":str|null,"gravedad":1|2|3|null,"para":"quién recibe y relación, ej: 'Caro, mi novia'"|null,`,
     `"contexto":"en 1 línea qué pasó"|null,"eleccion":id de producto|null,"extras":[ids],"eleccion_tarjeta":1|2|3|null,`,
     `"sin_tarjeta":bool,"tarjeta_propia":"texto si el cliente dictó su tarjeta"|null,"direccion":"calle y número"|null,`,
     `"barrio":str|null,"hora_limite":"HH:MM 24h"|null,"recibe":"nombre de quien recibe"|null,"nombre_cliente":str|null,`,
@@ -209,6 +210,9 @@ export async function atender(ficha, estadoPrevio, historial, texto) {
   const out = [];
   const decir = s => out.push(s);
 
+  if (e.reclamo === true) {
+    return { respuestas: ['Uh, perdón 🙏 Le paso tu reclamo ya mismo a una persona del equipo, con tu pedido a mano, para resolverlo rápido.'], persona: 'Reclamo', estado };
+  }
   if (e.pide_persona) {
     return { respuestas: [FRASE_PERSONA], persona: 'El cliente pidió hablar con una persona', estado };
   }

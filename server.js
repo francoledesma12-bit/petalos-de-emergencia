@@ -8,7 +8,7 @@ import { createHash, timingSafeEqual } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import * as datos from './src/db.js';
 import { atender, resumenParaPersona, textoPedidoCreado, textoCambioEstado } from './src/cerebro.js';
-import { enviar, leerAviso, buscarMensajes, waActivo, estado as estadoWA } from './src/whatsapp.js';
+import { enviar, leerAviso, buscarMensajes, waActivo, chatDe, estado as estadoWA } from './src/whatsapp.js';
 import { iaActiva } from './src/ia.js';
 
 const PUERTO = Number(process.env.PORT || 3000);
@@ -42,6 +42,13 @@ async function decir(c, texto, quien = 'flora') {
   if (c.canal === 'whatsapp') await enviar(c.chat_id, texto);
 }
 
+// Avisos al celular del dueño (como el aviso al vendedor de Rosario Exclusivos).
+const DUENO = chatDe(process.env.DUENO_WA);
+const PANEL_URL = process.env.PANEL_URL || '';
+const avisarDueno = texto => (DUENO ? enviar(DUENO, texto) : Promise.resolve(false));
+const quien = c => `${c.nombre || 'Cliente'}${c.canal === 'whatsapp' ? ' (+' + c.chat_id.replace('@c.us', '') + ')' : ' (chat web)'}`;
+const hora = ms => new Date(ms).toLocaleString('es-AR', { weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false });
+
 // Atiende un mensaje (ya agrupado) y devuelve lo que contestó Flora.
 async function procesar(canal, chatId, nombre, texto) {
   return enCola(`${canal}:${chatId}`, async () => {
@@ -50,7 +57,16 @@ async function procesar(canal, chatId, nombre, texto) {
     datos.anotar(c.id, 'cliente', texto);
     avisar('mensaje', { charla_id: c.id, quien: 'cliente', texto });
 
-    if (c.atiende === 'persona') { avisar('tablero'); return []; }
+    // La atiende una persona: Flora no se mete. Si el cliente agrega algo, le llega al dueño.
+    if (c.atiende === 'persona') {
+      const relleno = /^(ok|oka|dale|gracias|graciass*|genial|bueno|listo|joya|👍|🙏|❤️)[.! ]*$/i.test(texto.trim());
+      if (!relleno) {
+        datos.agregarAlAviso(c.id, `Agregó (${hora(Date.now())}): "${texto}"`);
+        await avisarDueno(`🔄 *ACTUALIZACIÓN caso #${c.id}* · ${quien(c)}\n"${texto}"`);
+      }
+      avisar('tablero');
+      return [];
+    }
 
     const r = await atender(ficha, c.estado, historial, texto);
     c.estado = r.estado;
@@ -59,12 +75,26 @@ async function procesar(canal, chatId, nombre, texto) {
     if (r.persona) {
       c.atiende = 'persona';
       c.derivada_en = Date.now();
-      datos.crearAviso(NEGOCIO, c.id, r.persona, resumenParaPersona(ficha, c.estado, r.persona, texto));
+      const resumen = resumenParaPersona(ficha, c.estado, r.persona, texto);
+      datos.crearAviso(NEGOCIO, c.id, r.persona, resumen);
+      avisarDueno([
+        `🚨 *Caso #${c.id}* · ${quien(c)}`, resumen, '',
+        `Contestale desde el WhatsApp de la florería${PANEL_URL ? ' o desde el panel: ' + PANEL_URL : ''}.`,
+        `Si nadie le contesta en ${ficha.minutos_para_volver_si_nadie_contesta} minutos, Flora vuelve a atenderlo.`,
+      ].join('\n'));
     }
     if (r.pedido) {
       const p = datos.crearPedido(NEGOCIO, c.id, r.pedido.datos, r.pedido.total, r.pedido.hora_limite);
       c.estado.pedido_id = p.id;
       dichas.push(textoPedidoCreado(ficha, p.id, p.total, p.datos.tono));
+      const d = p.datos;
+      avisarDueno([
+        `🌹 *Pedido #${p.id}* · ${quien(c)}`,
+        `${d.producto}${d.extras.length ? ' + ' + d.extras.join(', ') : ''} · *$ ${p.total.toLocaleString('es-AR')}*`,
+        `Para ${d.recibe} · ${d.direccion} (${d.zona})`,
+        `Llega antes de: ${hora(p.hora_limite)}`,
+        `Tarjeta: "${d.tarjeta}"`,
+      ].join('\n'));
     }
     datos.guardarEstado(c);
     for (const t of dichas) await decir(c, t);
@@ -73,9 +103,25 @@ async function procesar(canal, chatId, nombre, texto) {
   });
 }
 
+// Alguien contestó a mano desde el celular de la línea: Flora se calla en esa charla.
+function tomaPersona({ chatId, texto }) {
+  if (chatId === DUENO) return;
+  enCola(`whatsapp:${chatId}`, async () => {
+    const c = datos.charla(NEGOCIO, 'whatsapp', chatId);
+    datos.anotar(c.id, 'persona', texto);
+    c.atiende = 'persona';
+    c.derivada_en = c.derivada_en || Date.now();
+    datos.guardarEstado(c);
+    avisar('mensaje', { charla_id: c.id, quien: 'persona', texto });
+    avisar('tablero');
+  }).catch(err => console.error('[toma]', err));
+}
+
 // WhatsApp: junta los mensajes que llegan seguidos (la gente escribe en partes).
 const esperando = new Map();
-function recibirWhatsApp({ chatId, nombre, texto }) {
+function recibirWhatsApp(m) {
+  if (m.tipo === 'saliente') return tomaPersona(m);
+  const { chatId, nombre, texto } = m;
   const e = esperando.get(chatId) || { textos: [] };
   clearTimeout(e.reloj);
   e.textos.push(texto);
@@ -99,7 +145,8 @@ setInterval(async () => {
     c.derivada_en = null;
     datos.guardarEstado(c);
     datos.resolverAvisos(c.id);
-    await decir(c, 'Perdón la espera 🙏 El equipo está a mil, así que sigo yo para que no pierdas tiempo. ¿En qué te ayudo?');
+    await decir(c, 'Perdón la espera 🙏 El equipo está a mil, así que sigo yo para que no pierdas tiempo. ¿En qué te ayudo?', 'aviso');
+    await avisarDueno(`⏱️ Nadie contestó el *caso #${c.id}* (${quien(c)}) en ${ficha.minutos_para_volver_si_nadie_contesta} minutos: Flora lo retomó para que no se vaya.`);
     avisar('tablero');
   }
 }, 20000);
@@ -194,7 +241,7 @@ const servidor = http.createServer(async (req, res) => {
       const sesion = ruta.split('/')[3];
       const c = datos.db.prepare('SELECT id FROM charlas WHERE negocio=? AND canal=? AND chat_id=?').get(NEGOCIO, 'web', sesion);
       const desde = Number(url.searchParams.get('desde') || 0);
-      const mensajes = c ? datos.db.prepare(`SELECT quien, texto, en FROM mensajes WHERE charla_id=? AND quien='persona' AND en>? ORDER BY id`).all(c.id, desde) : [];
+      const mensajes = c ? datos.db.prepare(`SELECT quien, texto, en FROM mensajes WHERE charla_id=? AND quien IN ('persona','aviso') AND en>? ORDER BY id`).all(c.id, desde) : [];
       return json(res, 200, { mensajes });
     }
 
@@ -225,7 +272,7 @@ const servidor = http.createServer(async (req, res) => {
         if (!actual || actual.negocio !== NEGOCIO) return json(res, 404, { error: 'No existe ese pedido.' });
         const p = datos.cambiarPedido(actual.id, estado);
         const texto = textoCambioEstado(ficha, p);
-        if (texto && estado !== actual.estado) await decir(datos.charlaPorId(p.charla_id), texto);
+        if (texto && estado !== actual.estado) await decir(datos.charlaPorId(p.charla_id), texto, 'aviso');
         avisar('tablero');
         return json(res, 200, { ok: true, pedido: p });
       }
